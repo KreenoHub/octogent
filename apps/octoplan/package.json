@@ -10,7 +10,8 @@
     "start": "tsx server/main.ts",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "test": "vitest run",
-    "probe:ask": "tsx server/probe/askUserQuestionProbe.ts"
+    "probe:ask": "tsx server/probe/askUserQuestionProbe.ts",
+    "e2e:live": "tsx scripts/e2eDeepInterview.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.282",

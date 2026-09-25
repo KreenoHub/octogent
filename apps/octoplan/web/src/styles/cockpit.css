@@ -1,0 +1,114 @@
+.op-shell {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  height: 100%;
+}
+
+.op-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 1rem;
+  background: var(--bg-canvas);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.op-logo {
+  font-family: "Silkscreen", cursive;
+  font-size: 1.6rem;
+  letter-spacing: 0.12em;
+  color: var(--accent-primary);
+}
+
+.op-status {
+  font-size: 0.75rem;
+  letter-spacing: var(--control-letter-spacing);
+}
+
+.op-status--online {
+  color: var(--term-green);
+}
+
+.op-status--connecting {
+  color: var(--term-warning);
+}
+
+.op-status--offline {
+  color: var(--text-secondary);
+}
+
+.op-nav {
+  display: flex;
+  gap: 1.5rem;
+  padding: 0.35rem 1rem;
+  background: var(--term-red);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: var(--control-letter-spacing);
+  color: var(--accent-primary);
+}
+
+.op-panes {
+  display: grid;
+  grid-template-columns: minmax(220px, 18%) 1fr minmax(260px, 22%);
+  min-height: 0;
+}
+
+.op-pane {
+  overflow: auto;
+  padding: 0.75rem 1rem;
+  background: var(--sidebar-canvas);
+  border-right: 1px solid var(--border-subtle);
+}
+
+.op-pane--center {
+  background: var(--bg-canvas);
+}
+
+.op-pane-title {
+  margin: 0.75rem 0 0.5rem;
+  font-size: 0.85rem;
+  letter-spacing: var(--control-letter-spacing);
+  color: var(--accent-primary);
+}
+
+.op-empty {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.op-board,
+.op-coverage {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.8rem;
+}
+
+.op-board li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--sidebar-border);
+}
+
+.op-count {
+  color: var(--accent-primary);
+}
+
+.op-coverage li {
+  padding: 0.2rem 0 0.2rem 0.6rem;
+  border-left: 3px solid var(--border-subtle);
+  margin-bottom: 0.2rem;
+  color: var(--text-secondary);
+}
+
+.op-coverage li[data-status="partial"] {
+  border-left-color: var(--term-warning);
+}
+
+.op-coverage li[data-status="covered"] {
+  border-left-color: var(--term-green);
+  color: var(--text-primary);
+}

@@ -219,3 +219,20 @@ Each tentacle owns named directories plus `apps/octoplan/tests/<tentacle>/`. Cro
 - source: Prompt 2 implementation
 
 The project is initialized at `C:\Users\kulis\Projects\octogent` (display name "octogent", its own port, separate from the "Projects" workspace). Worktree-mode workers need the project root to be a git repo, which the Projects folder isn't. The tentacle mirror in `docs/octoplan/tentacles/` is the durable copy.
+
+<!-- op:id=D27 -->
+## D27 — Octoplan paths always check out with LF
+- date: 2026-09-25
+- status: active
+- source: wave 1 octopus
+
+With `core.autocrlf=true`, fresh Windows checkouts got CRLF and Biome failed every Octoplan file. `.gitattributes` forces `eol=lf` only for `apps/octoplan`, `packages/octoplan-protocol`, `docs/octoplan` and the tentacle sync script. Upstream files are left alone.
+
+<!-- op:id=D28 -->
+## D28 — Wave 1 octopus runs from a trusted Claude Code session
+- date: 2026-09-25
+- status: active
+- source: wave 1 octopus
+- depends-on: D17, D25
+
+The Octogent-spawned octopus terminal stopped at Claude Code's folder-trust dialog, which only the user may accept. So the octopus runs from the main Claude Code session, with one subagent worker per tentacle in its own git worktree (`.claude/worktrees/w1-<tentacle>`, branch `octoplan/w1-<tentacle>`), all branched from the contract commit on `octoplan/octopus`. Octogent still tracks progress: ticked todos are pushed into `.octogent/tentacles` with the sync script, so the Deck shows n/m done. The `PlanStore` and `ModeDefinition` contracts were seeded by the octopus before the workers started.

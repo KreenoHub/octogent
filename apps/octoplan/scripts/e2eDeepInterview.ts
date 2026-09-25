@@ -19,12 +19,14 @@ import {
 } from "@octogent/octoplan-protocol";
 import { WebSocket } from "ws";
 
-const repoPath = resolve(process.argv[2] ?? "");
-const maxRounds = Number.parseInt(process.argv[3] ?? "4", 10);
+// pnpm 10 forwards a literal "--" to scripts; ignore it.
+const cliArgs = process.argv.slice(2).filter((arg) => arg !== "--");
+const repoPath = resolve(cliArgs[0] ?? "");
+const maxRounds = Number.parseInt(cliArgs[1] ?? "4", 10);
 const port = process.env.OCTOPLAN_PORT ?? "8790";
 const TIMEOUT_MS = 25 * 60_000;
 
-if (!process.argv[2] || !existsSync(repoPath)) {
+if (!cliArgs[0] || !existsSync(repoPath)) {
   console.error("Usage: e2e:live -- <existing scratch repo path> [maxRounds]");
   process.exit(2);
 }

@@ -2,7 +2,7 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { answer, plan, round, session } from "./fixtures";
-import { renderCockpit } from "./renderCockpit";
+import { answerFirstOptions, renderCockpit } from "./renderCockpit";
 
 const setup = () => {
   const view = renderCockpit();
@@ -80,10 +80,10 @@ describe("focus mode", () => {
     const { transport } = setup();
     fireEvent.keyDown(window, { key: "f" });
     const overlay = focus() as HTMLElement;
-    fireEvent.click(within(overlay).getByRole("button", { name: "Answer with first options" }));
+    answerFirstOptions(within(overlay).getByTestId("question-round-slot"));
     expect(transport.sent).toEqual([]);
     expect(within(overlay).getByTestId("focus-progress")).toHaveTextContent("4 / ~4");
-    fireEvent.click(within(overlay).getByRole("button", { name: "Answer with first options" }));
+    answerFirstOptions(within(overlay).getByTestId("question-round-slot"));
     expect(transport.sent).toHaveLength(1);
     expect(transport.sent[0]).toMatchObject({
       type: "answer-round",

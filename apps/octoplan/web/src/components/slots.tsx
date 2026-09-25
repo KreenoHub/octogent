@@ -1,13 +1,15 @@
-// Mount points for components other tentacles build. The octopus rewires these at merge:
-// - QuestionRoundSlot -> QuestionRoundCard from web/src/qcards/index.ts (qcards)
-// - CoverageSlot -> CoverageMap from web/src/components/coverage/index.ts (modes)
-import {
-  type Answer,
-  COVERAGE_DIMENSION_LABELS,
-  type CoverageDimensionId,
-  type CoverageState,
-  type QuestionRound,
+// Mount points where the shell hands off to other tentacles' components:
+// - QuestionRoundSlot -> QuestionRoundCard (qcards)
+// - CoverageSlot -> CoverageMap (modes)
+// Keeping the seam lets the shell's props stay stable while those components evolve.
+import type {
+  Answer,
+  CoverageDimensionId,
+  CoverageState,
+  QuestionRound,
 } from "@octogent/octoplan-protocol";
+import { QuestionRoundCard } from "../qcards";
+import { CoverageMap } from "./coverage";
 
 export type QuestionRoundSlotProps = {
   round: QuestionRound;
@@ -16,59 +18,31 @@ export type QuestionRoundSlotProps = {
   onRevise: (answer: Answer) => void;
 };
 
-/** Placeholder answer: the first option of every question. */
-const firstOptionAnswers = (round: QuestionRound): Answer[] =>
-  round.questions.map(
-    (question): Answer => ({
-      questionId: question.id,
-      selected: question.options[0] ? [question.options[0].label] : [],
-      modifier: "none",
-      answeredAt: new Date().toISOString(),
-    }),
-  );
-
-export const QuestionRoundSlot = ({ round, answered, onAnswer }: QuestionRoundSlotProps) => {
-  const answerAll = () => onAnswer(firstOptionAnswers(round));
-  return (
-    <div className="op-slot" data-testid="question-round-slot" data-round-id={round.id}>
-      <span className="op-slot-tag">QUESTION CARD · PLACEHOLDER</span>
-      <ol className="op-slot-list">
-        {round.questions.map((question) => {
-          const chosen = answered?.find((a) => a.questionId === question.id);
-          return (
-            <li key={question.id}>
-              <strong>{question.header}</strong> {question.question}
-              {chosen ? (
-                <span className="op-slot-answer"> → {chosen.selected.join(", ")}</span>
-              ) : null}
-            </li>
-          );
-        })}
-      </ol>
-      {answered ? null : (
-        <button type="button" className="op-button" onClick={answerAll}>
-          Answer with first options
-        </button>
-      )}
-    </div>
-  );
-};
+export const QuestionRoundSlot = ({
+  round,
+  answered,
+  onAnswer,
+  onRevise,
+}: QuestionRoundSlotProps) => (
+  <div className="op-slot" data-testid="question-round-slot" data-round-id={round.id}>
+    <QuestionRoundCard
+      round={round}
+      {...(answered ? { answered } : {})}
+      onAnswer={onAnswer}
+      onRevise={onRevise}
+    />
+  </div>
+);
 
 export type CoverageSlotProps = {
   coverage: CoverageState | undefined;
   dimensions: readonly CoverageDimensionId[];
 };
 
-export const CoverageSlot = ({ coverage, dimensions }: CoverageSlotProps) => {
-  const statusOf = (id: CoverageDimensionId) =>
-    coverage?.dimensions.find((d) => d.id === id)?.status ?? "unknown";
-  return (
-    <ul className="op-coverage" data-testid="coverage-slot">
-      {dimensions.map((id) => (
-        <li key={id} data-status={statusOf(id)}>
-          {COVERAGE_DIMENSION_LABELS[id]}
-        </li>
-      ))}
-    </ul>
-  );
-};
+const EMPTY_COVERAGE: CoverageState = { dimensions: [] };
+
+export const CoverageSlot = ({ coverage, dimensions }: CoverageSlotProps) => (
+  <div data-testid="coverage-slot">
+    <CoverageMap coverage={coverage ?? EMPTY_COVERAGE} dimensions={dimensions} />
+  </div>
+);

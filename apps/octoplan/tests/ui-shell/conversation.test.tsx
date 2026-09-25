@@ -3,7 +3,7 @@ import type { ServerEvent } from "@octogent/octoplan-protocol";
 import { fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { answer, round, sectionBlock, session } from "./fixtures";
-import { renderCockpit } from "./renderCockpit";
+import { answerFirstOptions, renderCockpit } from "./renderCockpit";
 
 const roundBlock: ServerEvent = {
   type: "block",
@@ -77,7 +77,7 @@ describe("conversation stream", () => {
   it("wires the question slot to answer-round", () => {
     const { emit, transport } = withSession();
     emit({ type: "question-round", round: round() }, roundBlock);
-    fireEvent.click(screen.getByRole("button", { name: "Answer with first options" }));
+    answerFirstOptions(screen.getByTestId("question-round-slot"));
     expect(transport.sent).toHaveLength(1);
     expect(transport.sent[0]).toMatchObject({
       type: "answer-round",

@@ -1,7 +1,14 @@
 import { type IncomingMessage, type ServerResponse, createServer } from "node:http";
 import type { AddressInfo } from "node:net";
-import { PROTOCOL_VERSION, type ServerEvent, parseClientEvent } from "@octogent/octoplan-protocol";
+import {
+  type ClientEvent,
+  PROTOCOL_VERSION,
+  type ServerEvent,
+  parseClientEvent,
+} from "@octogent/octoplan-protocol";
 import { WebSocket, WebSocketServer } from "ws";
+import { createSessionManager } from "./bridge/sessionManager";
+import type { BridgeDeps } from "./bridge/types";
 
 export const SERVER_VERSION = "0.0.0";
 export const WS_PATH = "/ws";
@@ -28,12 +35,53 @@ const handleRequest = (request: IncomingMessage, response: ServerResponse) => {
   sendJson(response, 404, { ok: false, error: "not found" });
 };
 
+export const NO_BRIDGE_MESSAGE =
+  "This Octoplan server was started without a Claude bridge, so sessions are unavailable.";
+
 export const startOctoplanServer = (options: {
   host: string;
   port: number;
+  /** Real or fake Claude bridge dependencies; without them only hello/health work. */
+  deps?: BridgeDeps;
 }): Promise<OctoplanServer> => {
   const httpServer = createServer(handleRequest);
   const wss = new WebSocketServer({ server: httpServer, path: WS_PATH });
+  const broadcast = (event: ServerEvent) => {
+    for (const client of wss.clients) send(client, event);
+  };
+  const manager = options.deps ? createSessionManager(options.deps, broadcast) : null;
+
+  const handle = async (socket: WebSocket, event: ClientEvent) => {
+    if (event.type === "hello") {
+      if (manager) await manager.replay((e) => send(socket, e));
+      else send(socket, { type: "sessions", sessions: [] });
+      return;
+    }
+    if (!manager) {
+      send(socket, { type: "error", message: NO_BRIDGE_MESSAGE });
+      return;
+    }
+    switch (event.type) {
+      case "start-session":
+        await manager.start(event);
+        return;
+      case "send-message":
+        manager.sendMessage(event.sessionId, event.text);
+        return;
+      case "answer-round":
+        await manager.answerRound(event.sessionId, event.roundId, event.answers);
+        return;
+      case "revise-answer":
+        await manager.reviseAnswer(event.sessionId, event.answer);
+        return;
+      case "stop-session":
+        manager.stop(event.sessionId);
+        return;
+      case "capture-idea":
+        await manager.captureIdea(event.repoPath, event.title);
+        return;
+    }
+  };
 
   wss.on("connection", (socket) => {
     send(socket, {
@@ -47,12 +95,9 @@ export const startOctoplanServer = (options: {
         send(socket, { type: "error", message: "Malformed client event." });
         return;
       }
-      if (event.type === "hello") {
-        send(socket, { type: "sessions", sessions: [] });
-        return;
-      }
-      // Session handling lands with the bridge tentacle.
-      send(socket, { type: "error", message: `Not implemented yet: ${event.type}` });
+      handle(socket, event).catch((error) =>
+        send(socket, { type: "error", message: `Server error: ${String(error)}` }),
+      );
     });
   });
 
@@ -64,6 +109,7 @@ export const startOctoplanServer = (options: {
         port,
         close: () =>
           new Promise<void>((done) => {
+            void manager?.dispose();
             for (const client of wss.clients) client.terminate();
             wss.close(() => httpServer.close(() => done()));
           }),

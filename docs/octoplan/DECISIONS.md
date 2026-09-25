@@ -244,3 +244,17 @@ The Octogent-spawned octopus terminal stopped at Claude Code's folder-trust dial
 - source: wave 1 octopus
 
 Upstream ignores `**/coverage/` (test-coverage output), which silently dropped `apps/octoplan/web/src/components/coverage/` from the modes commit. A single `!apps/octoplan/web/src/components/coverage/` line re-includes it. That's clearer than `git add -f`, which every future file in the folder would also need.
+
+<!-- op:id=D30 -->
+## D30 — Bridge built by the octopus; planning sessions are locked down in three layers
+- date: 2026-09-25
+- status: active
+- source: wave 1 octopus
+- depends-on: D19, D28
+
+The bridge worker couldn't be resumed (a classifier denial), so the user asked the octopus to build it. Planning sessions are locked down in three layers:
+1. SDK `tools` exposes only Read, Glob, Grep and AskUserQuestion.
+2. `settingSources: ["project"]` keeps user-level hooks, such as the Questioneer hook, from intercepting AskUserQuestion.
+3. `canUseTool` enforces the mode allowlist.
+
+The allowlist must never go into SDK `allowedTools`, because that auto-approves AskUserQuestion and skips interception. Answers carry `[Q<n>]` prefixes so decisions can cite question ids. Q ids are unique per session only: two sessions in the same repo can both have a Q1. This is known and accepted for v1.

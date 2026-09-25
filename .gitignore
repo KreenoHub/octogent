@@ -12,3 +12,6 @@
 **/coverage/
 
 .octogent
+
+# Octoplan's CoverageMap component folder is source, not test-coverage output (D29).
+!apps/octoplan/web/src/components/coverage/

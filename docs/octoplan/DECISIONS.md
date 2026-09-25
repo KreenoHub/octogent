@@ -236,3 +236,11 @@ With `core.autocrlf=true`, fresh Windows checkouts got CRLF and Biome failed eve
 - depends-on: D17, D25
 
 The Octogent-spawned octopus terminal stopped at Claude Code's folder-trust dialog, which only the user may accept. So the octopus runs from the main Claude Code session, with one subagent worker per tentacle in its own git worktree (`.claude/worktrees/w1-<tentacle>`, branch `octoplan/w1-<tentacle>`), all branched from the contract commit on `octoplan/octopus`. Octogent still tracks progress: ticked todos are pushed into `.octogent/tentacles` with the sync script, so the Deck shows n/m done. The `PlanStore` and `ModeDefinition` contracts were seeded by the octopus before the workers started.
+
+<!-- op:id=D29 -->
+## D29 — Re-include the CoverageMap folder in .gitignore
+- date: 2026-09-25
+- status: active
+- source: wave 1 octopus
+
+Upstream ignores `**/coverage/` (test-coverage output), which silently dropped `apps/octoplan/web/src/components/coverage/` from the modes commit. A single `!apps/octoplan/web/src/components/coverage/` line re-includes it. That's clearer than `git add -f`, which every future file in the folder would also need.

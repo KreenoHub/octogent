@@ -1,0 +1,181 @@
+/* Center pane: Unanswered tray, the stream of cards, and the composer. */
+
+.op-conversation {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-bottom: 0;
+}
+
+.op-stream {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  overflow: auto;
+  padding-bottom: 0.75rem;
+}
+
+.op-tray {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-surface-1);
+  border: 1px solid var(--term-warning);
+}
+
+.op-tray-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.op-tray-title {
+  font-family: "Silkscreen", cursive;
+  font-size: 0.8rem;
+  color: var(--term-warning);
+}
+
+.op-tray-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.op-tray-item {
+  display: flex;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.25rem 0.4rem;
+  font-family: var(--font-main);
+  font-size: 0.78rem;
+  text-align: left;
+  color: var(--text-primary);
+  background: var(--bg-surface-2);
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.op-tray-item:hover {
+  border-color: var(--term-warning);
+}
+
+.op-tray-round {
+  color: var(--term-warning);
+}
+
+.op-tray-headers {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.op-tray-count {
+  color: var(--text-secondary);
+}
+
+.op-card {
+  background: var(--bg-surface-1);
+  border: 1px solid var(--border-subtle);
+  padding: 0.55rem 0.75rem;
+}
+
+.op-card-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.op-card-title {
+  margin: 0;
+  font-family: "Silkscreen", cursive;
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--accent-primary);
+}
+
+.op-card-toggle {
+  font-family: var(--font-main);
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.op-card-toggle:hover {
+  color: var(--text-primary);
+}
+
+.op-card-body,
+.op-card-preview {
+  margin: 0.4rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.op-card-preview {
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.op-tool-row {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  border-left: 2px solid var(--border-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.op-tool-name {
+  color: var(--term-blue);
+}
+
+.op-tool-summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.op-bubble-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.op-bubble {
+  max-width: 75%;
+  margin: 0;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.82rem;
+  white-space: pre-wrap;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--control-border-strong);
+}
+
+.op-composer {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+  padding: 0.6rem 0 0.75rem;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-canvas);
+}
+
+.op-composer-input {
+  flex: 1;
+  resize: vertical;
+  min-height: 2.6rem;
+}

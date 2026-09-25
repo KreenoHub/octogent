@@ -1,7 +1,8 @@
-import { useServerConnection } from "./app/useServerConnection";
+import { OctoplanProvider } from "./app/useOctoplan";
 import { CockpitLayout } from "./components/CockpitLayout";
 
-export const App = () => {
-  const connection = useServerConnection();
-  return <CockpitLayout connection={connection} />;
-};
+export const App = () => (
+  <OctoplanProvider>
+    <CockpitLayout />
+  </OctoplanProvider>
+);

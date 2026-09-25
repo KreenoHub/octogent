@@ -2,3 +2,8 @@
 @import "../../../web/src/styles/foundation.css";
 @import "../../../web/src/styles/console-theme-tokens.css";
 @import "./styles/cockpit.css";
+@import "./styles/controls.css";
+@import "./styles/sidebar.css";
+@import "./styles/conversation.css";
+@import "./styles/board.css";
+@import "./styles/overlays.css";

@@ -1,0 +1,100 @@
+/* Left pane: repos and their sessions. */
+
+.op-pane > .op-button--primary {
+  width: 100%;
+}
+
+.op-repo {
+  margin-bottom: 0.9rem;
+}
+
+.op-repo-name {
+  margin: 0 0 0.3rem;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.op-session-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.op-session {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 0.5rem;
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  font-family: var(--font-main);
+  font-size: 0.78rem;
+  text-align: left;
+  color: var(--text-primary);
+  background: var(--sidebar-row);
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.op-session:hover {
+  background: var(--sidebar-row-hover);
+}
+
+.op-session[aria-current="true"] {
+  background: var(--sidebar-row-active);
+  border-color: var(--sidebar-border-strong);
+}
+
+.op-session-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.op-session-mode {
+  grid-column: 2;
+  font-size: 0.68rem;
+  color: var(--sidebar-text-muted);
+}
+
+.op-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  background: var(--text-secondary);
+}
+
+.op-dot--running {
+  background: var(--term-green);
+}
+
+.op-dot--waiting-for-answer {
+  background: var(--term-warning);
+  animation: op-blink 1s steps(2, start) infinite;
+}
+
+.op-dot--idle {
+  background: var(--term-blue);
+}
+
+.op-dot--ended {
+  background: var(--border-subtle);
+}
+
+.op-dot--error {
+  background: var(--term-red);
+}
+
+@keyframes op-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .op-dot--waiting-for-answer {
+    animation: none;
+  }
+}

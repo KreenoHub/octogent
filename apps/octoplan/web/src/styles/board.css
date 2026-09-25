@@ -1,0 +1,66 @@
+/* Right pane: plan board sections and their records. */
+
+.op-board .op-board-section {
+  display: block;
+  padding: 0;
+}
+
+.op-board-toggle {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.3rem 0;
+  font-family: var(--font-main);
+  font-size: 0.8rem;
+  text-align: left;
+  color: var(--text-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.op-board-toggle::before {
+  content: "+";
+  margin-right: 0.4rem;
+  color: var(--text-secondary);
+}
+
+.op-board-toggle[aria-expanded="true"]::before {
+  content: "−";
+}
+
+.op-board-toggle > span:first-child {
+  flex: 1;
+}
+
+.op-board-records {
+  list-style: none;
+  margin: 0 0 0.4rem;
+  padding: 0;
+}
+
+.op-board .op-record {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.2rem 0 0.2rem 0.9rem;
+  border-bottom: none;
+  font-size: 0.75rem;
+}
+
+.op-record-id {
+  flex: none;
+  color: var(--text-secondary);
+}
+
+.op-record-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.op-board-empty {
+  padding: 0 0 0.4rem 0.9rem;
+}

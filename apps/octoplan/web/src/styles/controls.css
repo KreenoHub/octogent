@@ -1,0 +1,123 @@
+/* Buttons, form fields and status badges shared by every pane. */
+
+.op-button {
+  font-family: var(--font-main);
+  font-size: 0.75rem;
+  letter-spacing: var(--control-letter-spacing);
+  color: var(--text-primary);
+  background: var(--control-bg-strong);
+  border: 1px solid var(--control-border-strong);
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+}
+
+.op-button:hover:not(:disabled) {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.op-button:focus-visible,
+.op-session:focus-visible,
+.op-board-toggle:focus-visible,
+.op-tray-item:focus-visible,
+.op-card-toggle:focus-visible {
+  outline: 1px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+.op-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.op-button--primary {
+  background: var(--term-red);
+  border-color: var(--term-red);
+  color: var(--accent-primary);
+  font-weight: 700;
+}
+
+.op-field {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  letter-spacing: var(--control-letter-spacing);
+  color: var(--text-secondary);
+}
+
+.op-field input,
+.op-field select,
+.op-composer-input {
+  font-family: var(--font-main);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  background: var(--terminal-bg);
+  border: 1px solid var(--border-subtle);
+  padding: 0.45rem 0.55rem;
+}
+
+.op-field input:focus,
+.op-field select:focus,
+.op-composer-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.op-field input[aria-invalid="true"] {
+  border-color: var(--term-red);
+}
+
+.op-field-error {
+  margin: -0.4rem 0 0;
+  font-size: 0.75rem;
+  color: var(--term-red);
+}
+
+.op-badge {
+  flex: none;
+  font-size: 0.65rem;
+  letter-spacing: var(--control-letter-spacing);
+  text-transform: uppercase;
+  padding: 0.05rem 0.35rem;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.op-badge--active,
+.op-badge--open {
+  border-color: var(--term-blue);
+  color: var(--term-blue);
+}
+
+.op-badge--stale {
+  border-color: var(--term-warning);
+  color: var(--term-warning);
+}
+
+.op-badge--closed,
+.op-badge--mitigated,
+.op-badge--resolved {
+  border-color: var(--term-green);
+  color: var(--term-green);
+}
+
+.op-slot {
+  border: 1px dashed var(--border-subtle);
+  padding: 0.6rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+.op-slot-tag {
+  font-family: "Silkscreen", cursive;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.op-slot-list {
+  margin: 0.4rem 0 0.6rem;
+  padding-left: 1.2rem;
+}
+
+.op-slot-answer {
+  color: var(--term-green);
+}

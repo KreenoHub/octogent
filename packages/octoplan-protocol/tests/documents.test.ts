@@ -35,6 +35,11 @@ describe("GOAL.md", () => {
     expect(serializeGoalDoc(parsed, extra)).toContain("## My notes\n\nKeep this.");
   });
 
+  it("round-trips an empty goal without leaking placeholders", () => {
+    const empty: GoalDoc = { title: "Empty", why: "", goals: [], nonGoals: [], done: [] };
+    expect(parseGoalDoc(serializeGoalDoc(empty))).toEqual({ goal: empty, extra: "" });
+  });
+
   it("ticks the checkbox only when covered", () => {
     const text = serializeGoalDoc(goal);
     expect(text).toContain("- [x] Questions render as cards");

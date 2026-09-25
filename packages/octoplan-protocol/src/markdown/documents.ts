@@ -23,7 +23,7 @@ export const parseGoalDoc = (text: string): { goal: GoalDoc; extra: string } => 
   const sections = splitSections(text);
   const goal: GoalDoc = {
     title: sections.title,
-    why: (sections.byHeading.get(GOAL_SECTIONS.why) ?? []).join("\n").trim(),
+    why: withoutPlaceholder((sections.byHeading.get(GOAL_SECTIONS.why) ?? []).join("\n").trim()),
     goals: bulletList(sections.byHeading.get(GOAL_SECTIONS.goals)),
     nonGoals: bulletList(sections.byHeading.get(GOAL_SECTIONS.nonGoals)),
     done: [],
@@ -103,6 +103,10 @@ const splitSections = (text: string) => {
   }
   return { title, byHeading, order };
 };
+
+// serializeGoalDoc writes this placeholder for an empty Why; it must read back as "".
+const WHY_PLACEHOLDER = "_Not written yet._";
+const withoutPlaceholder = (text: string) => (text === WHY_PLACEHOLDER ? "" : text);
 
 const bulletList = (lines: string[] | undefined) =>
   (lines ?? [])

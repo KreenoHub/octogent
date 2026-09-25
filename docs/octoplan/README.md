@@ -30,6 +30,28 @@ pnpm --filter @octogent/octoplan probe:ask        # LIVE: proves the SDK lets us
 
 `probe:ask` uses your Claude Code login and makes one short real request.
 
+## Tentacles (how Octoplan gets built)
+
+Six Octogent tentacles, one per layer (D17). Each owns specific directories and its own `apps/octoplan/tests/<tentacle>/` folder, so parallel workers don't collide. Shared wiring (`server/createServer.ts` routes from other tentacles) and `packages/octoplan-protocol` go through the octopus.
+
+| Tentacle | Owns | Wave 1 | Wave 2 |
+|---|---|---|---|
+| `bridge` | `server/bridge/`, session WS handling in `server/createServer.ts` | 4 | 2 |
+| `store` | `server/store/` | 4 | 1 |
+| `ui-shell` | `web/src/` (except the three folders below) | 5 | 2 |
+| `qcards` | `web/src/qcards/` | 4 | 0 |
+| `modes` | `server/modes/`, `web/src/components/coverage/` | 5 | 2 |
+| `integrations` | `server/integrations/`, `web/src/integrations/` | 0 | 5 |
+
+`.octogent/` is gitignored, so the committed copy of each tentacle's `CONTEXT.md` + `todo.md` lives in [`tentacles/`](./tentacles/). Sync it with:
+
+```bash
+node scripts/octoplan-tentacles.mjs push [--workspace <checkout>]   # docs -> .octogent (after editing the mirror)
+node scripts/octoplan-tentacles.mjs pull [--workspace <checkout>]   # .octogent -> docs (after agents/UI tick todos)
+```
+
+`push` needs the tentacle folders to exist first (`octogent tentacle create <id>`, with Octogent running in that checkout). It preserves Octogent's managed suggested-skills block, and `pull` keeps that block out of git.
+
 ## Layout
 
 ```

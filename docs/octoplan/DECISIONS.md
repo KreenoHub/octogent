@@ -193,3 +193,29 @@ This avoids Octogent's 8787 range. They're overridable with `OCTOPLAN_PORT` / `O
 - depends-on: D7, D10
 
 A revised answer is a new session-log entry with `revises: A<n>`, so git history and the file itself both show how the thinking changed.
+
+<!-- op:id=D24 -->
+## D24 — Every todo item is one self-contained line
+- date: 2026-09-25
+- status: active
+- source: Prompt 2 implementation
+- depends-on: D17
+
+Octogent's `parseTodoProgress` (`apps/api/src/deck/readDeckTentacles.ts`) passes only the `- [ ] …` line to worker prompts. Indented sub-bullets never reach a worker, so each item carries its full scope and ends with "Done when …".
+
+<!-- op:id=D25 -->
+## D25 — Directory ownership per tentacle, shared files via the octopus
+- date: 2026-09-25
+- status: active
+- source: Prompt 2 implementation
+- depends-on: D17
+
+Each tentacle owns named directories plus `apps/octoplan/tests/<tentacle>/`. Cross-tentacle seams are interfaces owned by one side: `PlanStore` (store), `ModeDefinition` (modes), `useOctoplan()` (ui-shell) and `QuestionRoundCard` (qcards). The consumer codes against a fake until the interface merges. `packages/octoplan-protocol` and route wiring in `server/createServer.ts` belong to the octopus.
+
+<!-- op:id=D26 -->
+## D26 — Octogent runs for this repo from the main checkout
+- date: 2026-09-25
+- status: active
+- source: Prompt 2 implementation
+
+The project is initialized at `C:\Users\kulis\Projects\octogent` (display name "octogent", its own port, separate from the "Projects" workspace). Worktree-mode workers need the project root to be a git repo, which the Projects folder isn't. The tentacle mirror in `docs/octoplan/tentacles/` is the durable copy.

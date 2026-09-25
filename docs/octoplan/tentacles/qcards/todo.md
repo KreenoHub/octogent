@@ -1,0 +1,10 @@
+# Todo
+
+- [ ] **QuestionRoundCard** — build `apps/octoplan/web/src/qcards/QuestionRoundCard.tsx` + `index.ts`: Render 1–4 questions, each with its header chip, question text, and 2–4 options with descriptions. Single-select uses radiogroup semantics and multi-select uses checkbox semantics. An "Other" free-text input goes to `otherText`, and the "(Recommended)" option is visually marked while its label stays unchanged. Previews render in a monospace side panel when any option has one. Keys 1–9 / Space / O / Tab / Enter as in CONTEXT.md; Enter is disabled until every question is answered. Show a small "Claude will receive:" line built with `encodeAnswerText`. Done when `tests/qcards/QuestionRoundCard.test.tsx` answers a 4-question fake round keyboard-only and asserts the exact `Answer[]` passed to `onAnswer`.
+- [ ] **Park and tentative modifiers** — T toggles `modifier: "tentative"` on the focused question. P opens an inline assumption input pre-filled with the "(Recommended)" option label (or empty) and sets `modifier: "parked"` + `assumption`. A parked question counts as answered for Enter, and badges show on the card. Done when tests cover T on/off, P with an edited assumption, P with no selection, and the encoded preview text for each.
+- [ ] **Answered history + revise** — an `AnsweredQuestions` panel lists answered questions for the session, newest first, each with its answer, modifier badge and revision chain (older answers struck through). Selecting an entry and pressing R reopens that single question as an editable card. Confirming emits one `Answer` with `revisionOf` set to the question id through `onRevise`. Done when a test revises a tentative answer to a plain one and asserts the emitted Answer and the rendered chain.
+- [ ] **"Why this question" detail** — a collapsed `<details>` on each question showing the coverage dimension label (`COVERAGE_DIMENSION_LABELS[question.dimension]`) when present, and nothing when absent. Done when tests assert it is collapsed by default and hidden without a dimension.
+
+## Wave 2
+
+_No wave-2 items. The question cards are fully MVP scope. Polish found while dogfooding goes here (Prompt 5)._

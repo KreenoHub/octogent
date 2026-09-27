@@ -10,6 +10,12 @@ Date: 2026-09-25 · Branch: `feat/octoplan` · Coordinator: the octopus (D28)
 
 The full output is in [`evidence/wave-1-live-gate/`](./evidence/wave-1-live-gate/).
 
+**Update 2026-09-27: every MVP done-criterion is now met.** The gaps below were closed, and a stricter live gate passed (run 4). On top of the checks above, it requires a visible revision card showing a real re-check ("D1 → D9 …") and an automatically written session summary. The output is in [`evidence/wave-1-gate-final/`](./evidence/wave-1-gate-final/).
+
+| Cockpit (live session, round 2 waiting) | Focus mode (`?focus=1`) |
+|---|---|
+| ![Cockpit](./screenshots/cockpit.png) | ![Focus mode](./screenshots/focus-mode.png) |
+
 ## What shipped
 
 | Tentacle | What | Commit | Tests |
@@ -58,26 +64,35 @@ What that output shows:
 | Item | Status |
 |---|---|
 | Lint, tests, builds green | ✅ scoped to Octoplan. Repo-wide `pnpm lint` still shows upstream's CRLF noise on Windows, and `apps/api` has 2 upstream failures on Windows. |
-| Dev serves :5190 + health on :8790 | ✅ health verified live. The dev UI wasn't re-opened after the bridge merge, but the production build passes. |
+| Dev serves :5190 + health on :8790 | ✅ The dev UI was rendered live for the screenshots on 2026-09-27. |
 | First round arrives as cards within 60 s | ✅ 13 s, at protocol level (the e2e drives the same WebSocket as the UI) |
 | Answering resumes Claude, and answers land in `sessions/` | ✅ |
 | Parking writes PARKED with the assumption | ✅ Claude restating the assumption in its next reply wasn't checked. |
 | Tentative writes RISKS | ✅ |
-| Revision → REVISION turn, stale decisions, Claude re-checks | ✅ turn + stale. Claude's `## Revision` reply wasn't asserted. |
+| Revision → REVISION turn, stale decisions, Claude re-checks | ✅ Run 4 posted the card "Revision Q1: D1 → D9 Own the data: plain human-readable local file". It's built from docs/plan by the bridge, because Claude re-checks but doesn't reliably write the card itself (D31). |
 | Coverage updates live, and COVERAGE.md matches | ✅ |
 | Hand edit appears within 2 s, and unknown keys survive | ✅ store tests (~325 ms), not a manual UI check |
-| GOAL.md + session summary | ✅ GOAL.md. ⚠️ Nothing writes the session `## Summary` automatically yet. |
+| GOAL.md + session summary | ✅ Claude's closing `## Summary` (30 lines in run 4) is written to the session log automatically. Stopping early writes a factual fallback. |
 | Focus mode by keyboard only | ✅ component tests |
-| Screenshots in `docs/octoplan/screenshots/` | ❌ not taken, because no browser tooling was used in this run |
+| Screenshots in `docs/octoplan/screenshots/` | ✅ `cockpit.png` and `focus-mode.png`, from a live session captured with headless Edge |
 
 ## Known bugs and gaps
 
-1. **Session summary isn't written.** `writeSessionSummary` exists in the store, but nothing calls it at the end of a session.
-2. **Q ids are unique per session only.** Two sessions in the same repo can both have a Q1 (D30).
-3. **Section cards render markdown as plain text** (ui-shell). This is readable, but not formatted.
-4. **The Goals count on the plan board** comes from `goal.goals`, because `PlanSnapshot` has no goal ids (ui-shell note).
-5. **Unwired hotkeys:** I, B and G are wave-2 features. The hotkey bar shows them, but they do nothing yet.
-6. **Leftover worktrees.** `.claude/worktrees/w1-*` and branches `octoplan/w1-*` hold only `node_modules`: no commits, and a few empty folders. Remove them with `git worktree remove --force .claude/worktrees/w1-<name>` and `git branch -D octoplan/w1-<name>`.
+1. **Q ids are unique per session only.** Two sessions in the same repo can both have a Q1 (D30).
+2. **The Goals count on the plan board** comes from `goal.goals`, because `PlanSnapshot` has no goal ids (ui-shell note).
+3. **Unwired hotkeys:** I, B and G are wave-2 features. The hotkey bar shows them, but they do nothing yet.
+4. **Sessions live in server memory.** Restarting the server (including `tsx watch` reloading after a server or protocol edit) drops the live conversation cards. The plan in `docs/plan` is untouched.
+5. **Leftover worktrees.** `.claude/worktrees/w1-*` and branches `octoplan/w1-*` hold only `node_modules`: no commits, and a few empty folders. Remove them with `git worktree remove --force .claude/worktrees/w1-<name>` and `git branch -D octoplan/w1-<name>`.
+
+## Closed on 2026-09-27
+
+| Gap | Fix | Commit |
+|---|---|---|
+| Section cards showed raw markdown | A safe renderer that builds React elements only; HTML in replies stays literal text | `3f541ff`, `cd220db` |
+| Session summary not written | Claude's `## Summary` goes to the session log; stopping early writes a fallback | `8774b25` |
+| Claude's reply to a revision unverified | Live runs 2–3 showed Claude re-checks silently (right decisions, no card). A stricter prompt (`51d565d`) and the bridge's own card built from docs/plan (`cd13aee`, D31). Run 4 passed. | `51d565d`, `cd13aee` |
+| No screenshots | `?focus=1` / `?session=<id>` deep links, then headless Edge captures | `cf363c7`, `a06526b` |
+| (found by the screenshots) First round labeled "Round 2" | Round numbers are 1-based end to end (D32) | `ce33061` |
 
 ## Process notes (for wave 2)
 

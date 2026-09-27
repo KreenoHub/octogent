@@ -258,3 +258,20 @@ The bridge worker couldn't be resumed (a classifier denial), so the user asked t
 3. `canUseTool` enforces the mode allowlist.
 
 The allowlist must never go into SDK `allowedTools`, because that auto-approves AskUserQuestion and skips interception. Answers carry `[Q<n>]` prefixes so decisions can cite question ids. Q ids are unique per session only: two sessions in the same repo can both have a Q1. This is known and accepted for v1.
+
+<!-- op:id=D31 -->
+## D31 — The bridge shows what a revision did, built from docs/plan
+- date: 2026-09-27
+- status: active
+- source: wave-1 gap closing
+- depends-on: D7, D30
+
+In live gate runs 2 and 3, Claude handled revised answers correctly: it recorded a replacement decision with `depends-on` and the old one stayed stale. But it never wrote a visible reply between rounds, even with a stricter prompt. After a revision, the bridge now posts a `Revision Q<n>` card at Claude's next round or turn end. It lists each dependent decision as replaced (`D1 → D9 title`), re-confirmed, or still stale, read from docs/plan rather than trusted from prose. If Claude writes its own card, the bridge's is suppressed. The live gate requires the card to show a real re-check.
+
+<!-- op:id=D32 -->
+## D32 — Round numbers are 1-based
+- date: 2026-09-27
+- status: active
+- source: wave-1 gap closing
+
+`QuestionRound.index` is the number people read ("Round 1"), and session logs store it as-is. The UI workers had assumed 0-based and added 1, which showed the first round as "Round 2". The screenshots caught it.

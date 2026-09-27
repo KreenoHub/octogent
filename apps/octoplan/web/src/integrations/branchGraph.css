@@ -1,0 +1,421 @@
+/* Branch graph (G): Octogent tokens and the retro GitHub-panel look, dark only. */
+
+.op-bg {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 0.6rem;
+  min-height: 100%;
+  font-family: var(--font-main);
+  font-size: 0.8rem;
+  color: var(--text-primary);
+}
+
+.op-bg-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #1f2733;
+}
+
+.op-bg-title {
+  margin: 0;
+  font-family: "Silkscreen", cursive;
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-primary);
+}
+
+.op-bg-counts {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+.op-bg-loading {
+  color: var(--term-warning);
+  font-size: 0.7rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.op-bg-actions {
+  display: inline-flex;
+  gap: 0.3rem;
+  margin-left: auto;
+}
+
+.op-bg-small {
+  font-size: 0.66rem;
+  padding: 0.16rem 0.4rem;
+}
+
+.op-bg-hint {
+  margin: 0;
+  padding: 0.3rem 0.5rem;
+  border: 1px dashed color-mix(in srgb, var(--term-warning) 55%, #2b2f36);
+  color: var(--term-warning);
+  font-size: 0.72rem;
+}
+
+.op-bg-empty {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.op-bg-body {
+  min-height: 0;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr);
+}
+
+.op-bg-panel {
+  min-height: 0;
+  border: 1px solid #2b2f36;
+  background: #0f141c;
+  padding: 0.5rem 0.6rem;
+}
+
+.op-bg-main {
+  overflow: auto;
+  background: #0a0f16;
+}
+
+.op-bg-panel-title {
+  margin: 0 0 0.4rem;
+  color: #d7a622;
+  font-size: 0.75rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.op-bg-side {
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  align-content: start;
+  gap: 0.6rem;
+}
+
+/* ---- commit graph ---- */
+
+.op-bg-commits {
+  display: flex;
+  align-items: flex-start;
+}
+
+.op-bg-svg {
+  flex: none;
+  display: block;
+}
+
+.op-bg-edge {
+  fill: none;
+  stroke-width: 2;
+}
+
+.op-bg-dot {
+  stroke: #0a0f16;
+  stroke-width: 1.5;
+}
+
+.op-bg-dot.is-merge {
+  stroke: currentcolor;
+  fill: #0a0f16;
+  stroke-width: 2;
+}
+
+.op-bg-lane-0 {
+  color: var(--accent-primary);
+  stroke: var(--accent-primary);
+  fill: var(--accent-primary);
+}
+.op-bg-lane-1 {
+  color: var(--term-green);
+  stroke: var(--term-green);
+  fill: var(--term-green);
+}
+.op-bg-lane-2 {
+  color: var(--term-blue);
+  stroke: var(--term-blue);
+  fill: var(--term-blue);
+}
+.op-bg-lane-3 {
+  color: #c678dd;
+  stroke: #c678dd;
+  fill: #c678dd;
+}
+.op-bg-lane-4 {
+  color: var(--term-red);
+  stroke: var(--term-red);
+  fill: var(--term-red);
+}
+.op-bg-lane-5 {
+  color: #56b6c2;
+  stroke: #56b6c2;
+  fill: #56b6c2;
+}
+
+.op-bg-edge.op-bg-lane-0,
+.op-bg-edge.op-bg-lane-1,
+.op-bg-edge.op-bg-lane-2,
+.op-bg-edge.op-bg-lane-3,
+.op-bg-edge.op-bg-lane-4,
+.op-bg-edge.op-bg-lane-5 {
+  fill: none;
+  opacity: 0.8;
+}
+
+.op-bg-dot.is-merge.op-bg-lane-0,
+.op-bg-dot.is-merge.op-bg-lane-1,
+.op-bg-dot.is-merge.op-bg-lane-2,
+.op-bg-dot.is-merge.op-bg-lane-3,
+.op-bg-dot.is-merge.op-bg-lane-4,
+.op-bg-dot.is-merge.op-bg-lane-5 {
+  fill: #0a0f16;
+}
+
+.op-bg-rows {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0 0 0 0.3rem;
+  list-style: none;
+}
+
+/* must match ROW_H in graphLayout.ts */
+.op-bg-row {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+  overflow: hidden;
+  border-bottom: 1px dashed #1a2230;
+}
+
+.op-bg-subject {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-primary);
+}
+
+.op-bg-hash {
+  margin-left: auto;
+  padding-left: 0.5rem;
+  color: #6b7a90;
+  font-size: 0.68rem;
+}
+
+.op-bg-ref-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.op-bg-ref {
+  font-family: var(--font-main);
+  font-size: 0.66rem;
+  line-height: 1.2;
+  padding: 0.05rem 0.3rem;
+  border: 1px solid currentcolor;
+  background: color-mix(in srgb, currentcolor 12%, #0a0f16);
+  fill: none;
+  cursor: pointer;
+}
+
+.op-bg-ref--remote {
+  border-style: dashed;
+  opacity: 0.75;
+}
+
+.op-bg-ref--tag {
+  color: #8494ab;
+  border: 1px solid #3d4a5e;
+  cursor: default;
+}
+
+/* ---- chips and badges ---- */
+
+.op-bg-chip,
+.op-bg-pr {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.64rem;
+  line-height: 1.2;
+  padding: 0.05rem 0.3rem;
+  border: 1px solid #3d4a5e;
+  color: #b8c4d6;
+  background: #111823;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.op-bg-chip.is-missing {
+  color: var(--term-warning);
+  border-color: var(--term-warning);
+}
+
+.op-bg-pr--open {
+  color: var(--term-green);
+  border-color: color-mix(in srgb, var(--term-green) 60%, #2b2f36);
+}
+.op-bg-pr--draft {
+  color: #8494ab;
+}
+.op-bg-pr--merged {
+  color: #c678dd;
+  border-color: color-mix(in srgb, #c678dd 60%, #2b2f36);
+}
+.op-bg-pr--closed {
+  color: var(--term-red);
+  border-color: color-mix(in srgb, var(--term-red) 60%, #2b2f36);
+}
+
+.op-bg-ci {
+  padding-left: 0.25rem;
+  border-left: 1px solid #3d4a5e;
+}
+.op-bg-ci--passing .op-bg-ci {
+  color: var(--term-green);
+}
+.op-bg-ci--failing .op-bg-ci {
+  color: var(--term-red);
+}
+.op-bg-ci--pending .op-bg-ci {
+  color: var(--term-warning);
+}
+
+.op-bg-convo {
+  color: var(--accent-primary);
+  border-color: color-mix(in srgb, var(--accent-primary) 55%, #2b2f36);
+}
+.op-bg-convo--merged {
+  color: var(--term-green);
+}
+.op-bg-convo--abandoned {
+  color: #6b7a90;
+  text-decoration: line-through;
+}
+
+/* ---- side lists ---- */
+
+.op-bg-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.op-bg-branch,
+.op-bg-convo-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding: 0.18rem 0;
+  border-bottom: 1px dashed #243041;
+}
+
+.op-bg-branch-name {
+  font-family: var(--font-main);
+  font-size: 0.74rem;
+  color: var(--text-primary);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.op-bg-branch-name:hover,
+.op-bg-branch-name.is-selected {
+  color: var(--accent-primary);
+}
+
+.op-bg-branch-name:focus-visible,
+.op-bg-ref:focus-visible {
+  outline: 1px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+.op-bg-swimlane {
+  margin-bottom: 0.5rem;
+  padding-left: 0.4rem;
+  border-left: 2px solid color-mix(in srgb, var(--accent-primary) 58%, #3d4a5e);
+}
+
+.op-bg-swimlane-title {
+  margin: 0 0 0.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: "Silkscreen", cursive;
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  color: var(--text-primary);
+}
+
+.op-bg-swimlane-count {
+  font-family: var(--font-main);
+  color: var(--text-secondary);
+  font-size: 0.64rem;
+}
+
+.op-bg-convo-title {
+  color: var(--text-secondary);
+}
+
+.op-bg-link {
+  display: inline-flex;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.op-bg-link select {
+  font-family: var(--font-main);
+  font-size: 0.68rem;
+  color: var(--text-primary);
+  background: var(--terminal-bg);
+  border: 1px solid var(--border-subtle);
+  max-width: 12rem;
+}
+
+.op-bg-details dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.2rem 0.6rem;
+  font-size: 0.72rem;
+}
+
+.op-bg-details dt {
+  color: #8494ab;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.64rem;
+}
+
+.op-bg-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .op-bg-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

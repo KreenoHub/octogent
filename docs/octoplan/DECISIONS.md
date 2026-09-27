@@ -275,3 +275,21 @@ In live gate runs 2 and 3, Claude handled revised answers correctly: it recorded
 - source: wave-1 gap closing
 
 `QuestionRound.index` is the number people read ("Round 1"), and session logs store it as-is. The UI workers had assumed 0-based and added 1, which showed the first round as "Round 2". The screenshots caught it.
+
+<!-- op:id=D33 -->
+## D33 — Wave-2 contracts first; the bridge orchestrates, the octopus wires
+- date: 2026-09-27
+- status: active
+- source: wave 2 octopus
+- depends-on: D25, D28
+
+Before any wave-2 worker starts, the octopus seeds:
+- the protocol events (branch, converge, idea search and actions, stages, tentacle export, git graph, branch links, notices) and the pop-out terminal's separate `/ws/terminal/<session>` channel
+- `PlanStore` additions (updateIdea, stages, branches) and `IdeaRegistry`
+- the modes signatures (applyIdeaAction, buildConvergeTurn, buildStages)
+- the integrations contract (an injected `Exec`, exportToTentacle, buildGraph)
+- `PtyFactory`
+- three web slots (BranchGraph, TerminalPanel, BrainstormBoard)
+- new dependencies (node-pty, xterm), so no worker edits package.json
+
+Each has a throwing stub, so the tree type-checks throughout. Workers fill in their own folders; the octopus wires the server events and mounts the slots at merge. Idea status gains `parked`.

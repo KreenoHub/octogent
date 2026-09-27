@@ -3,18 +3,21 @@
 // in parallel. Change it only through the octopus.
 import type {
   Answer,
+  ConversationBranch,
   CoverageDimension,
   CoverageState,
   Decision,
   Gap,
   GoalDoc,
   Idea,
+  IdeaSearchResult,
   ModeId,
   ParkedItem,
   PlanSnapshot,
   QuestionRound,
   Risk,
   SessionLogEntry,
+  Stage,
 } from "@octogent/octoplan-protocol";
 
 export type DecisionInput = Omit<Decision, "id" | "date" | "status"> & {
@@ -72,9 +75,31 @@ export interface PlanStore {
   updateCoverage(dimension: CoverageDimension): Promise<CoverageState>;
   writeGoal(goal: GoalDoc): Promise<void>;
 
+  // ---- Wave 2 ----
+  /** Replaces an existing idea (status, tags, body) in IDEAS.md; unknown ids throw. */
+  updateIdea(idea: Idea): Promise<Idea>;
+  /** docs/plan/stages/STAGE-n.md, sorted by index. */
+  readStages(): Promise<Stage[]>;
+  /** Writes every stage file; STAGE-n files beyond the new list are removed. */
+  writeStages(stages: readonly Stage[]): Promise<void>;
+  /** docs/plan/branches.md (B-records). */
+  readBranches(): Promise<ConversationBranch[]>;
+  upsertBranch(input: BranchInput): Promise<ConversationBranch>;
+
   /** Fires after Octoplan's own writes and after external edits to docs/plan (debounced). */
   onChange(listener: PlanChangeListener): () => void;
   dispose(): Promise<void>;
 }
 
+export type BranchInput = Omit<ConversationBranch, "id"> & { id?: string };
+
 export type PlanStoreFactory = (repoPath: string) => PlanStore;
+
+/**
+ * Cross-project idea search (wave 2). Known repos are listed in ~/.octoplan/projects.json
+ * (paths only; the ideas stay in each repo's IDEAS.md).
+ */
+export interface IdeaRegistry {
+  registerRepo(repoPath: string): Promise<void>;
+  searchIdeas(query: string): Promise<IdeaSearchResult[]>;
+}

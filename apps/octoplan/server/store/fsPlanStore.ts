@@ -5,6 +5,7 @@ import { join } from "node:path";
 import {
   type Answer,
   COVERAGE_DIMENSION_LABELS,
+  type ConversationBranch,
   type CoverageDimension,
   type CoverageState,
   type Decision,
@@ -22,6 +23,7 @@ import {
   type Risk,
   SESSIONS_DIR,
   type SessionLogEntry,
+  type Stage,
   coverageCodec,
   decisionCodec,
   gapCodec,
@@ -50,7 +52,13 @@ import {
   newSessionLogText,
   rewriteHeader,
 } from "./sessionLog";
-import type { DecisionInput, PlanChangeListener, PlanStore, StartSessionLogInput } from "./types";
+import type {
+  BranchInput,
+  DecisionInput,
+  PlanChangeListener,
+  PlanStore,
+  StartSessionLogInput,
+} from "./types";
 import { type PlanDirWatcher, watchPlanDir } from "./watcher";
 
 export type { PlanWarning, PlanWarningListener } from "./index";
@@ -403,6 +411,28 @@ class FsPlanStore implements PlanStore {
       }
       return { doc: next, result: undefined };
     });
+  }
+
+  // ---------- wave 2 (stubs until the store worker implements them) ----------
+
+  async updateIdea(_idea: Idea): Promise<Idea> {
+    throw new Error("updateIdea: not implemented yet (wave 2, store tentacle)");
+  }
+
+  async readStages(): Promise<Stage[]> {
+    throw new Error("readStages: not implemented yet (wave 2, store tentacle)");
+  }
+
+  async writeStages(_stages: readonly Stage[]): Promise<void> {
+    throw new Error("writeStages: not implemented yet (wave 2, store tentacle)");
+  }
+
+  async readBranches(): Promise<ConversationBranch[]> {
+    throw new Error("readBranches: not implemented yet (wave 2, store tentacle)");
+  }
+
+  async upsertBranch(_input: BranchInput): Promise<ConversationBranch> {
+    throw new Error("upsertBranch: not implemented yet (wave 2, store tentacle)");
   }
 
   // ---------- change events ----------

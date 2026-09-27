@@ -102,6 +102,10 @@ export const planClientReducer = (state: PlanClientState, event: ServerEvent): P
           : { message: event.message, sessionId: event.sessionId };
       return { ...state, errors: [...state.errors, error].slice(-MAX_ERRORS) };
     }
+    // Wave-2 events (notice, ideas, stages, export-result, graph): the ui-shell wave-2
+    // worker replaces this pass-through with real state.
+    default:
+      return state;
   }
 };
 

@@ -167,7 +167,7 @@ export const ideaSchema = z.object({
   title: z.string().min(1),
   date: isoDate,
   tags: z.array(z.string()),
-  status: z.enum(["inbox", "starred", "merged", "killed", "adopted"]),
+  status: z.enum(["inbox", "starred", "merged", "killed", "parked", "adopted"]),
   body: z.string(),
 });
 export type Idea = z.infer<typeof ideaSchema>;
@@ -235,6 +235,36 @@ export const tentacleLaneSchema = z.object({
   branches: z.array(z.string()),
 });
 export type TentacleLane = z.infer<typeof tentacleLaneSchema>;
+
+export const gitCommitNodeSchema = z.object({
+  hash: z.string(),
+  parents: z.array(z.string()),
+  refs: z.array(z.string()),
+  subject: z.string(),
+  time: z.number().int(),
+  /** Column in the rendered graph; first parents stay in their lane. */
+  lane: z.number().int().nonnegative(),
+});
+export type GitCommitNode = z.infer<typeof gitCommitNodeSchema>;
+
+export const gitGraphSchema = z.object({
+  repoPath: z.string(),
+  commits: z.array(gitCommitNodeSchema),
+  branches: z.array(gitBranchNodeSchema),
+  prs: z.array(prStatusSchema),
+  lanes: z.array(tentacleLaneSchema),
+  conversationBranches: z.array(conversationBranchSchema),
+  /** False when `gh` is missing or not signed in; `hint` says how to fix it. */
+  ghAvailable: z.boolean(),
+  hint: z.string().optional(),
+});
+export type GitGraph = z.infer<typeof gitGraphSchema>;
+
+export const ideaActionSchema = z.enum(["star", "merge", "kill", "park", "adopt", "reopen"]);
+export type IdeaAction = z.infer<typeof ideaActionSchema>;
+
+export const ideaSearchResultSchema = z.object({ repoPath: z.string(), idea: ideaSchema });
+export type IdeaSearchResult = z.infer<typeof ideaSearchResultSchema>;
 
 export const sessionSchema = z.object({
   id: z.string(),

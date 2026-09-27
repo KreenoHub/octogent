@@ -1,5 +1,6 @@
 import type { MessageBlock } from "@octogent/octoplan-protocol";
 import { useState } from "react";
+import { Markdown } from "../app/markdown";
 import { firstLine, isLongSection } from "../app/sessionView";
 
 type SectionBlock = Extract<MessageBlock, { kind: "section" }>;
@@ -27,7 +28,9 @@ export const SectionCard = ({ block }: { block: SectionBlock }) => {
       {collapsed ? (
         <p className="op-card-preview">{firstLine(block.markdown)}</p>
       ) : (
-        <div className="op-card-body">{block.markdown}</div>
+        <div className="op-card-body">
+          <Markdown text={block.markdown} />
+        </div>
       )}
     </article>
   );

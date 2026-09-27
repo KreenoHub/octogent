@@ -138,12 +138,13 @@ const writeFixture = () => {
   git(repo, "config", "user.name", "Octoplan e2e");
   git(repo, "add", "-A");
   git(repo, "commit", "-m", "chore: habit v1 plan");
-  // DOD5: implemented work citing D1, and a build-time choice that contradicts D1.
+  // DOD5: merged work citing D2 (-> implemented), and a build-time choice that contradicts
+  // D1 (-> harvested, D1 diverged; a contradiction outranks implemented).
   writeFileSync(
-    join(repo, "src", "store", "log.js"),
-    "// append-only habit log [D1]\nexport const LOG = '~/.habits';\n",
+    join(repo, "src", "cli", "index.js"),
+    "// habit CLI: add, log, week [D2]\nexport const COMMANDS = ['add', 'log', 'week'];\n",
   );
-  git(repo, "commit", "-am", "feat(store): append-only text log [D1]");
+  git(repo, "commit", "-am", "feat(cli): the three v1 commands [D2]");
   writeFileSync(
     join(repo, "src", "store", "db.js"),
     "// switched to SQLite for fast streak queries\n",
@@ -429,10 +430,16 @@ const run = async () => {
     events.length = 0;
     await startServer();
     await connect();
-    const restored = await waitFor("session-updated", (e) => e.session.id === interview, 20_000);
+    // A reconnect replays sessions as one `sessions` list, not per-session updates.
+    const listed = await waitFor(
+      "sessions",
+      (e) => e.sessions.some((s) => s.id === interview),
+      20_000,
+    );
+    const restored = listed ? { session: listed.sessions.find((s) => s.id === interview) } : null;
     const back = await waitFor("question-round", (e) => e.round.id === pending.round.id, 20_000);
     const answeredAlready = find("round-answered", (e) => e.roundId === pending.round.id);
-    const inDock = Boolean(restored?.session.restored && back && !answeredAlready);
+    const inDock = Boolean(restored?.session?.restored && back && !answeredAlready);
     const mark = events.length;
     send({
       type: "answer-round",
@@ -451,7 +458,7 @@ const run = async () => {
     record(
       "DOD3 restart with a pending round",
       inDock && Boolean(continued),
-      `restored=${restored?.session.restored ?? false}, status=${restored?.session.status ?? "?"}, round back pending=${Boolean(back && !answeredAlready)}; Claude continued after the answer: ${Boolean(continued)}`,
+      `restored=${restored?.session?.restored ?? false}, status=${restored?.session?.status ?? "?"}, round back pending=${Boolean(back && !answeredAlready)}; Claude continued after the answer: ${Boolean(continued)}`,
     );
   }
   send({ type: "stop-session", sessionId: interview });
@@ -498,21 +505,30 @@ const run = async () => {
     `overview ${shown?.done ?? "?"}/${shown?.total ?? "?"} vs files ${counts.done}/${counts.total}`,
   );
 
-  mark = events.length;
+  // The harvest already ran on repo open (D17); a manual run after it has nothing new.
   send({ type: "run-harvest", repoPath: repo });
-  const harvestDone = await waitFor(
-    "plan-job",
-    (e) => e.job === "harvest" && e.state !== "running",
-    8 * 60_000,
-    mark,
-  );
-  await until(() => (planFor(repo)?.harvest?.length ?? 0) > 0, 10_000);
+  await until(() => (planFor(repo)?.harvest?.length ?? 0) > 0, 8 * 60_000, 1000);
   const harvest = planFor(repo)?.harvest ?? [];
   const harvestFile = join(repo, PLAN_DIR, "HARVEST.md");
+  mark = events.length;
+  send({ type: "request-overview", repoPath: repo });
+  const afterHarvest = await waitFor(
+    "overview",
+    (e) => resolve(e.overview.repoPath) === resolve(repo),
+    60_000,
+    mark,
+  );
+  const driftOf = (id: string) => afterHarvest?.overview.drift.find((d) => d.decisionId === id);
+  const d2 = driftOf("D2");
+  const d1After = driftOf("D1");
+  const contradictsD1 = harvest.some((h) => h.contradicts.includes("D1"));
   record(
-    "DOD5 drift badge + harvest H-record",
-    d1?.status === "implemented" && harvest.length > 0 && existsSync(harvestFile),
-    `D1 drift=${d1?.status ?? "none"} (${d1?.evidence.join("; ") ?? ""}); harvest job: ${harvestDone?.message ?? "no result"}; H-records: ${harvest.map((h) => `${h.id} ${h.title} contradicts [${h.contradicts.join(",")}]`).join(" | ") || "none"}`,
+    "DOD5 drift badges + harvest H-record",
+    d2?.status === "implemented" &&
+      harvest.length > 0 &&
+      existsSync(harvestFile) &&
+      (!contradictsD1 || d1After?.status === "diverged"),
+    `D2 drift=${d2?.status ?? "none"} (${d2?.evidence.join("; ") ?? ""}); D1 drift=${d1After?.status ?? "none"} before harvest=${d1?.status ?? "none"}; H-records: ${harvest.map((h) => `${h.id} ${h.title} contradicts [${h.contradicts.join(",")}]`).join(" | ") || "none"}`,
   );
 
   // --- DOD11 + DOD6: handoff generate -> apply

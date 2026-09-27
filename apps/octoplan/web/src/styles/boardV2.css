@@ -76,7 +76,7 @@
 }
 
 .op-attention-kind--harvest {
-  color: var(--term-blue);
+  color: var(--term-green);
 }
 
 .op-attention-text,
@@ -267,8 +267,8 @@
   padding: 0 0.25rem;
   font-size: 0.6rem;
   text-transform: uppercase;
-  color: var(--term-blue);
-  border: 1px solid var(--term-blue);
+  color: var(--term-green);
+  border: 1px solid var(--term-green);
 }
 
 .op-dialog--handoff {

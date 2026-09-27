@@ -95,6 +95,9 @@ describe("branch", () => {
     });
     if (!parent) throw new Error("no session");
     await until(() => ctx.manager.getSession("s1")?.claudeSessionId === PARENT_CLAUDE);
+    // The id arrives with `init`, a tick before the "Framing" section block exists; branching
+    // from that block before it's recorded is (correctly) refused, so wait for the block.
+    await until(() => ctx.log.events.some((e) => e.type === "block" && e.block.id === "s1-b2"));
 
     const child = await ctx.manager.branch("s1", "Try Postgres", "s1-b2");
     expect(child).toMatchObject({

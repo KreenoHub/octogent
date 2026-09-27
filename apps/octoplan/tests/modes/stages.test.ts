@@ -6,6 +6,7 @@ import {
 } from "@octogent/octoplan-protocol";
 import { describe, expect, it } from "vitest";
 import { buildStages } from "../../server/modes";
+import { loadV2Plan } from "./v2Fixture";
 
 const goal: GoalDoc = {
   title: "Team digest",
@@ -87,7 +88,8 @@ describe("buildStages", () => {
   });
 
   it("round-trips every stage through serializeStage/parseStage", () => {
-    for (const stage of buildStages(goal, decisions)) {
+    // STAGE-n.md doesn't store decisionIds (yet); the handoff re-reads them from the prompt.
+    for (const { decisionIds: _ids, ...stage } of buildStages(goal, decisions)) {
       expect(parseStage(serializeStage(stage))).toEqual(stage);
     }
   });
@@ -126,5 +128,94 @@ describe("buildStages", () => {
 
   it("refuses a goal without definition-of-done items", () => {
     expect(() => buildStages({ ...goal, done: [] }, decisions)).toThrow(/definition of done/i);
+  });
+
+  it("titles chunked stages with a few words, never a cut-off line", () => {
+    const stages = buildStages(goal, decisions);
+    for (const stage of stages) {
+      expect(stage.title).not.toMatch(/…$|\.\.\.$/);
+      if (stage.index < stages.length) expect(stage.title.split(" ").length).toBeLessThanOrEqual(5);
+    }
+    expect(stages[0]?.title).toBe("Weekly digest builder covered");
+  });
+
+  it("sets decisionIds on every stage, matching the decisions its prompt cites", () => {
+    for (const stage of buildStages(goal, decisions)) {
+      expect(stage.decisionIds).toBeDefined();
+      for (const id of stage.decisionIds ?? []) expect(stage.prompt).toContain(`- ${id} — `);
+    }
+  });
+
+  it("prefers the D-ids a DoD item cites (plus their depends-on) over shared words", () => {
+    const cited: GoalDoc = {
+      ...goal,
+      done: [{ id: "DOD-1", text: "Digest opt-out works (D5)", status: "unknown", evidence: "" }],
+    };
+    const withDeps = [
+      ...decisions,
+      { ...decision("D5", "Opt-out is one click"), dependsOn: ["D2", "D3"] },
+    ];
+    const [first] = buildStages(cited, withDeps);
+    // D5 is cited, D2 is its active dependency; D3 is superseded; D1 only shares a word.
+    expect(first?.decisionIds).toEqual(["D2", "D5"]);
+  });
+});
+
+describe("buildStages on the real v2 plan (docs/plan GOAL.md + DECISIONS.md)", () => {
+  const { goal: v2Goal, decisions: v2Decisions } = loadV2Plan();
+  const stages = buildStages(v2Goal, v2Decisions);
+
+  it("makes one stage per D41 wave, in order, named after the wave", () => {
+    expect(stages.slice(0, 3).map((s) => s.title)).toEqual([
+      "Wave 3 — focus",
+      "Wave 4 — memory",
+      "Wave 5 — overview",
+    ]);
+    expect(stages[0]?.prompt).toContain("- answer chips");
+    expect(stages[1]?.prompt).toContain("- recap");
+    expect(stages[2]?.prompt).toContain("- History tab");
+    expect(stages.at(-1)?.title).toBe("Integrate and verify end to end");
+  });
+
+  it("keeps gate items (e2e, full test runs, the week of real use) for the final stage", () => {
+    const buildDone = stages
+      .slice(0, -1)
+      .map((s) => s.prompt.split("## Done when")[1] ?? "")
+      .join("\n");
+    for (const id of ["DOD1", "DOD2", "DOD3", "DOD5", "DOD8", "DOD10", "DOD11"]) {
+      expect(buildDone).not.toContain(`${id}:`);
+    }
+    expect(stages[1]?.prompt).toContain("DOD4:");
+    expect(stages[2]?.prompt).toContain("DOD9:");
+    const finalDone = stages.at(-1)?.prompt.split("## Done when")[1] ?? "";
+    for (const item of v2Goal.done) expect(finalDone).toContain(`${item.id}:`);
+  });
+
+  it("puts the wave's own decisions in its stage", () => {
+    expect(stages[0]?.decisionIds).toEqual(expect.arrayContaining(["D14", "D25", "D43"]));
+    expect(stages[1]?.decisionIds).toEqual(expect.arrayContaining(["D16", "D28", "D31"]));
+    expect(stages[2]?.decisionIds).toEqual(expect.arrayContaining(["D24", "D42"]));
+  });
+
+  it("lists at most 12 decisions per stage, and every stage has decisionIds", () => {
+    for (const stage of stages) {
+      expect(stage.decisionIds?.length ?? 0).toBeGreaterThan(0);
+      expect(stage.decisionIds?.length).toBeLessThanOrEqual(12);
+      const listed = (stage.prompt.split("## Decisions this stage relies on")[1] ?? "")
+        .split("## Done when")[0]
+        ?.split("\n")
+        .filter((line) => /^- D\d+ — /.test(line));
+      expect(listed?.length).toBe(stage.decisionIds?.length);
+    }
+  });
+
+  it("never titles a stage with an ellipsis", () => {
+    for (const stage of stages) expect(stage.title).not.toMatch(/…$/);
+  });
+
+  it("gives work no wave claims (the handoff goal) its own stage before the final one", () => {
+    const rest = stages.find((s) => s.title === "Remaining goals");
+    expect(rest?.index).toBe(stages.length - 1);
+    expect(rest?.decisionIds).toEqual(expect.arrayContaining(["D44", "D45", "D47"]));
   });
 });

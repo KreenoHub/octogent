@@ -8,10 +8,11 @@ import type {
   SDKMessage,
   SDKUserMessage,
 } from "@anthropic-ai/claude-agent-sdk";
-import type { ServerEvent } from "@octogent/octoplan-protocol";
+import type { Convention, ServerEvent } from "@octogent/octoplan-protocol";
 import type { BridgeDeps, PtyFactory, PtyProcess, QueryFn } from "../../server/bridge/types";
 import { applyCoverageUpdate, getMode } from "../../server/modes";
 import { createFsPlanStore } from "../../server/store/fsPlanStore";
+import type { ConventionsStore, TranscriptRecord, TranscriptStore } from "../../server/store/types";
 
 export type ScriptContext = {
   options: Options;
@@ -182,4 +183,59 @@ export const createFakePtyFactory = () => {
     return pty;
   };
   return { spawnPty, spawns };
+};
+
+/** An in-memory TranscriptStore; a "restart" is a new manager over the same instance. */
+export const createFakeTranscripts = () => {
+  const records = new Map<string, TranscriptRecord>();
+  const appended: ServerEvent[] = [];
+  const transcripts: TranscriptStore = {
+    append: async (sessionId, event) => {
+      // Round-trip through JSON like the jsonl file would.
+      const copy = JSON.parse(JSON.stringify(event)) as ServerEvent;
+      appended.push(copy);
+      if (copy.type === "session-updated") {
+        const record = records.get(sessionId);
+        if (record) record.session = copy.session;
+        else records.set(sessionId, { session: copy.session, events: [] });
+        return;
+      }
+      records.get(sessionId)?.events.push(copy);
+    },
+    load: async () => JSON.parse(JSON.stringify([...records.values()])) as TranscriptRecord[],
+  };
+  return { transcripts, appended, records };
+};
+
+export const fakeConventions = (list: Convention[] | Error): ConventionsStore => ({
+  list: async () => {
+    if (list instanceof Error) throw list;
+    return list;
+  },
+  add: async () => {
+    throw new Error("not used");
+  },
+  remove: async () => {},
+});
+
+type SdkToolHandler = (args: Record<string, unknown>, extra: unknown) => Promise<unknown>;
+type SdkToolRegistry = Record<string, { handler?: SdkToolHandler; callback?: SdkToolHandler }>;
+
+/**
+ * The tools of an in-process MCP server passed to query(). Reaches into McpServer's
+ * registry: the only way to call an SDK tool without an MCP transport.
+ */
+export const sdkServerTools = (options: Options, server = "octoplan") => {
+  const config = options.mcpServers?.[server] as { instance?: unknown } | undefined;
+  const instance = config?.instance as { _registeredTools?: SdkToolRegistry } | undefined;
+  const registry = instance?._registeredTools ?? {};
+  return {
+    names: Object.keys(registry),
+    call: (name: string, args: Record<string, unknown>) => {
+      const entry = registry[name];
+      const handler = entry?.handler ?? entry?.callback;
+      if (!handler) throw new Error(`No tool ${name} on ${server}`);
+      return handler(args, {});
+    },
+  };
 };

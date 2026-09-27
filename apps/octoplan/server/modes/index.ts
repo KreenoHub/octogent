@@ -25,3 +25,11 @@ export {
   writeGoalInputSchema,
 } from "./goal";
 export { PLAN_TOOLS, PLAN_TOOL_PREFIX } from "./prompts/shared";
+export { applyIdeaAction, buildConvergeTurn } from "./brainstorm";
+export { buildStages } from "./stages";
+export type {
+  ApplyIdeaAction,
+  BuildConvergeTurn,
+  BuildStages,
+  IdeaActionResult,
+} from "./wave2Types";

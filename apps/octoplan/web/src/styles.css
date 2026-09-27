@@ -5,6 +5,8 @@
 @import "./styles/controls.css";
 @import "./styles/sidebar.css";
 @import "./styles/conversation.css";
+@import "./styles/stream.css";
 @import "./styles/markdown.css";
 @import "./styles/board.css";
+@import "./styles/boardV2.css";
 @import "./styles/overlays.css";

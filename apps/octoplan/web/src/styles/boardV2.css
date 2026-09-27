@@ -1,0 +1,290 @@
+/* v2 board: tabs, needs-attention, drift badges, history, conventions; header tentacles + jobs. */
+
+.op-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.op-tab {
+  padding: 0.25rem 0.7rem;
+  font-family: "Silkscreen", cursive;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  background: none;
+  border: 1px solid transparent;
+  border-bottom: none;
+  cursor: pointer;
+}
+
+.op-tab[aria-selected="true"] {
+  color: var(--accent-primary);
+  background: var(--bg-surface-1);
+  border-color: var(--border-subtle);
+}
+
+.op-tab:focus-visible {
+  outline: 1px solid var(--accent-primary);
+}
+
+/* Needs attention (D9, D17). */
+.op-attention {
+  margin-bottom: 0.6rem;
+  padding: 0.45rem 0.6rem;
+  background: var(--bg-surface-1);
+  border: 1px solid var(--term-warning);
+}
+
+.op-attention-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.op-attention-title {
+  font-family: "Silkscreen", cursive;
+  font-size: 0.72rem;
+  color: var(--term-warning);
+}
+
+.op-attention-list {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.op-attention-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 0.74rem;
+}
+
+.op-attention-kind {
+  flex: none;
+  min-width: 4.8rem;
+  font-size: 0.62rem;
+  letter-spacing: var(--control-letter-spacing);
+  text-transform: uppercase;
+  color: var(--term-warning);
+}
+
+.op-attention-kind--harvest {
+  color: var(--term-blue);
+}
+
+.op-attention-text,
+.op-attention-jump {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.op-attention-jump,
+.op-record-open {
+  padding: 0;
+  font-family: var(--font-main);
+  font-size: inherit;
+  text-align: left;
+  color: var(--text-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.op-attention-jump:hover,
+.op-attention-jump:focus-visible,
+.op-record-open:hover,
+.op-record-open:focus-visible {
+  color: var(--accent-primary);
+  outline: none;
+}
+
+.op-attention-harvest {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  width: 100%;
+  padding-left: 5.2rem;
+}
+
+.op-attention-source {
+  flex: 1;
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+}
+
+/* Drift badges (D24). */
+.op-drift {
+  flex: none;
+  font-size: 0.6rem;
+  letter-spacing: var(--control-letter-spacing);
+  text-transform: uppercase;
+  padding: 0.05rem 0.3rem;
+  border: 1px dashed var(--border-subtle);
+  color: var(--text-secondary);
+  cursor: help;
+}
+
+.op-drift--implemented {
+  border-color: var(--term-green);
+  color: var(--term-green);
+}
+
+.op-drift--diverged {
+  border-style: solid;
+  border-color: var(--term-red);
+  color: var(--term-red);
+}
+
+/* Plan-tool effects flash the section they changed (D19). */
+.op-board-section--flash > .op-board-toggle {
+  animation: op-flash 1.2s steps(4, end);
+}
+
+@keyframes op-flash {
+  0%,
+  50% {
+    color: var(--accent-primary);
+    background: var(--bg-surface-2);
+  }
+}
+
+/* History tab (D24). */
+.op-history {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.op-history-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.2rem 0;
+  font-size: 0.74rem;
+  border-bottom: 1px solid var(--sidebar-border);
+}
+
+.op-history-at {
+  flex: none;
+  font-size: 0.66rem;
+  color: var(--text-secondary);
+}
+
+/* Conventions (D28). */
+.op-conventions {
+  margin-top: 0.6rem;
+}
+
+.op-conventions-form {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0.3rem 0 0.4rem 0.9rem;
+}
+
+.op-conventions-body-input {
+  resize: vertical;
+}
+
+.op-conventions .op-record .op-pinned-unpin {
+  border-left: none;
+}
+
+/* Header: tentacle progress (D42) and running plan jobs. */
+.op-header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.op-tentacles {
+  font-family: "Silkscreen", cursive;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.6rem;
+  color: var(--accent-primary);
+  background: var(--bg-surface-1);
+  border: 1px solid var(--control-border-strong);
+  cursor: pointer;
+}
+
+.op-tentacles:hover,
+.op-tentacles:focus-visible {
+  border-color: var(--accent-primary);
+  outline: none;
+}
+
+.op-tentacles--pulse {
+  animation: op-pulse 0.4s steps(2, start) 4;
+}
+
+@keyframes op-pulse {
+  to {
+    color: var(--bg-canvas);
+    background: var(--term-green);
+    border-color: var(--term-green);
+  }
+}
+
+.op-jobs {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.72rem;
+  color: var(--term-warning);
+}
+
+.op-spinner {
+  width: 0.55rem;
+  height: 0.55rem;
+  background: var(--term-warning);
+  animation: op-spin 0.8s steps(4, end) infinite;
+}
+
+@keyframes op-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.op-nav [data-active="true"] {
+  color: var(--term-green);
+}
+
+/* Sidebar: sessions rebuilt after a server restart (D29). */
+.op-session-restored {
+  margin-left: 0.4rem;
+  padding: 0 0.25rem;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  color: var(--term-blue);
+  border: 1px solid var(--term-blue);
+}
+
+.op-dialog--handoff {
+  width: min(60rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 3rem);
+  overflow: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .op-tentacles--pulse,
+  .op-spinner,
+  .op-board-section--flash > .op-board-toggle {
+    animation: none;
+  }
+
+  .op-tentacles--pulse {
+    border-color: var(--term-green);
+  }
+}

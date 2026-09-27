@@ -25,6 +25,8 @@ export type QuestionRoundSlotProps = {
   answered?: Answer[];
   onAnswer: (answers: Answer[]) => void;
   onRevise: (answer: Answer) => void;
+  /** v2 (D25, R3): answered rounds render as chips unless false (the E hotkey's expand-all). */
+  compact?: boolean;
 };
 
 export const QuestionRoundSlot = ({
@@ -32,11 +34,18 @@ export const QuestionRoundSlot = ({
   answered,
   onAnswer,
   onRevise,
+  compact,
 }: QuestionRoundSlotProps) => (
-  <div className="op-slot" data-testid="question-round-slot" data-round-id={round.id}>
+  <div
+    className="op-slot"
+    data-testid="question-round-slot"
+    data-round-id={round.id}
+    data-compact={compact === undefined ? undefined : String(compact)}
+  >
     <QuestionRoundCard
       round={round}
       {...(answered ? { answered } : {})}
+      {...(compact === undefined ? {} : { compact })}
       onAnswer={onAnswer}
       onRevise={onRevise}
     />

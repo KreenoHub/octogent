@@ -84,8 +84,8 @@ describe("planClientReducer", () => {
 
   it("pending rounds are ordered by index and scoped to the session", () => {
     const state = run(
-      { type: "question-round", round: round({ id: "r2", index: 1 }) },
-      { type: "question-round", round: round({ id: "r1", index: 0 }) },
+      { type: "question-round", round: round({ id: "r2", index: 2 }) },
+      { type: "question-round", round: round({ id: "r1", index: 1 }) },
       { type: "question-round", round: round({ id: "rx", sessionId: "s2" }) },
     );
     expect(selectPendingRounds(state, "s1").map((r) => r.round.id)).toEqual(["r1", "r2"]);

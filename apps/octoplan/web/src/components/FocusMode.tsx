@@ -55,7 +55,7 @@ const RoundFocus = ({
           {n} / ~{m}
         </span>
         <span className="op-focus-round-label">
-          Round {round.index + 1} · question {index + 1} of {count}
+          Round {round.index} · question {index + 1} of {count}
         </span>
       </div>
       <QuestionRoundSlot

@@ -21,14 +21,14 @@ const setup = () => {
         },
       }),
     },
-    { type: "question-round", round: round({ id: "r0", index: 0 }) },
+    { type: "question-round", round: round({ id: "r0", index: 1 }) },
     {
       type: "round-answered",
       sessionId: "s1",
       roundId: "r0",
       answers: [answer("Q1"), answer("Q2")],
     },
-    { type: "question-round", round: round({ id: "r1", index: 1 }) },
+    { type: "question-round", round: round({ id: "r1", index: 2 }) },
   );
   return view;
 };

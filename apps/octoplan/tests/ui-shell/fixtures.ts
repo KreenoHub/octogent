@@ -20,7 +20,7 @@ export const session = (overrides: Partial<Session> = {}): Session => ({
 export const round = (overrides: Partial<QuestionRound> = {}): QuestionRound => ({
   id: "r1",
   sessionId: "s1",
-  index: 0,
+  index: 1,
   askedAt: "2026-09-25T10:01:00Z",
   questions: [
     {

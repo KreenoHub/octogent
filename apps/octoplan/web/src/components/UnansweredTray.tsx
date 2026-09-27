@@ -28,7 +28,7 @@ export const UnansweredTray = ({
         {pending.map(({ round }) => (
           <li key={round.id}>
             <button type="button" className="op-tray-item" onClick={() => jumpTo(round.id)}>
-              <span className="op-tray-round">Round {round.index + 1}</span>
+              <span className="op-tray-round">Round {round.index}</span>
               <span className="op-tray-headers">
                 {round.questions.map((q) => q.header || q.question).join(" · ")}
               </span>

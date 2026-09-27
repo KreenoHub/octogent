@@ -96,7 +96,8 @@ export type Question = z.infer<typeof questionSchema>;
 export const questionRoundSchema = z.object({
   id: z.string(),
   sessionId: z.string(),
-  index: z.number().int().nonnegative(),
+  // 1-based round number as shown to people ("Round 1"); session logs store it as-is.
+  index: z.number().int().positive(),
   questions: z.array(questionSchema).min(1).max(4),
   askedAt: z.string(),
 });

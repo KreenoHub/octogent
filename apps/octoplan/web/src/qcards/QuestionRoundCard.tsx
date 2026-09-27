@@ -23,7 +23,7 @@ export const QuestionRoundCard = ({
     const chain = chains.get(question.id);
     return chain && chain.length > 0 ? [{ question, chain }] : [];
   });
-  const roundNumber = round.index + 1;
+  const roundNumber = round.index;
 
   if (items.length > 0) {
     return (

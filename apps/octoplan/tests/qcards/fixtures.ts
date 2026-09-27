@@ -5,7 +5,7 @@ export const FIXED_NOW = "2026-09-25T12:00:00.000Z";
 export const fourQuestionRound: QuestionRound = {
   id: "round-1",
   sessionId: "s1",
-  index: 0,
+  index: 1,
   askedAt: "2026-09-25T11:59:00.000Z",
   questions: [
     {

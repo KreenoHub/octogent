@@ -18,6 +18,7 @@ import {
   questionRoundSchema,
 } from "@octogent/octoplan-protocol";
 import { applyAnsweredQuestions } from "../modes";
+import { buildConvergeTurn as defaultBuildConvergeTurn } from "../modes/brainstorm";
 import type { ModeDefinition } from "../modes/types";
 import type { PlanStore } from "../store/types";
 import { splitSections, summarizeToolUse } from "./blocks";
@@ -43,6 +44,8 @@ type LiveSession = {
   summaryWritten: boolean;
   /** Set by a revision; turned into a visible card at Claude's next round or turn end. */
   pendingRevision: { questionId: string; staleIds: string[] } | null;
+  /** A branch that hasn't reported its own Claude session id yet forks from this one. */
+  forkOf?: string;
 };
 
 export const isRevisionHeading = (heading: string, questionId: string) =>
@@ -88,8 +91,24 @@ const errorText = (error: unknown) => (error instanceof Error ? error.message : 
 
 export type SessionManager = ReturnType<typeof createSessionManager>;
 
+/** The user turn that opens a branch; the forked Claude keeps the parent's whole context. */
+export const branchTurn = (title: string, fromBlock?: MessageBlock) => {
+  const anchor =
+    fromBlock?.kind === "section"
+      ? ` It starts from your section "${fromBlock.heading || "(untitled)"}".`
+      : "";
+  return `BRANCH: this conversation is now a separate branch called "${title}".${anchor} Explore this alternative direction from here, as if the other path was not taken. Continue the interview with AskUserQuestion, and record decisions for this branch as usual.`;
+};
+
+export const NOTHING_STARRED_MESSAGE =
+  "Nothing is starred yet. Star at least one idea on the brainstorm board before converging.";
+
+export const BRANCH_NOT_READY_MESSAGE =
+  "This session can't be branched yet: Claude hasn't reported its session id. Wait for its first reply.";
+
 export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => {
   const now = deps.now ?? (() => new Date());
+  const buildConvergeTurn = deps.buildConvergeTurn ?? defaultBuildConvergeTurn;
   const newId = deps.newId ?? randomUUID;
   const sessions = new Map<string, LiveSession>();
   const stores = new Map<string, PlanStore>();
@@ -279,7 +298,7 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
     }
   };
 
-  const runQuery = (live: LiveSession, resumeId?: string): InputQueue => {
+  const runQuery = (live: LiveSession, resumeId?: string, forkSession = false): InputQueue => {
     const input = createInputQueue();
     const abort = new AbortController();
     live.input = input;
@@ -302,6 +321,7 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
       },
       abortController: abort,
       ...(resumeId ? { resume: resumeId } : {}),
+      ...(resumeId && forkSession ? { forkSession: true } : {}),
     };
     void (async () => {
       try {
@@ -325,6 +345,7 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
 
   const liveInput = (live: LiveSession) => {
     if (live.input && !live.input.closed) return live.input;
+    if (!live.session.claudeSessionId && live.forkOf) return runQuery(live, live.forkOf, true);
     return runQuery(live, live.session.claudeSessionId);
   };
 
@@ -350,12 +371,45 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
     }
   };
 
-  const sendMessage = (sessionId: string, text: string) => {
-    const live = getLive(sessionId);
-    if (!live || live.session.status === "ended") return;
+  const pushTurn = (live: LiveSession, text: string) => {
     addBlock(live, { kind: "user", id: blockId(live), text, at: now().toISOString() });
     liveInput(live).push(text);
     if (live.session.status !== "waiting-for-answer") setStatus(live, "running");
+  };
+
+  const sendMessage = (sessionId: string, text: string) => {
+    const live = getLive(sessionId);
+    if (!live || live.session.status === "ended") return;
+    pushTurn(live, text);
+  };
+
+  const newLive = (session: Session, mode: ModeDefinition, store: PlanStore): LiveSession => ({
+    session,
+    mode,
+    store,
+    input: null,
+    abort: null,
+    blocks: [],
+    rounds: [],
+    answers: new Map(),
+    pending: new Map(),
+    questionCount: 0,
+    blockCount: 0,
+    summaryWritten: false,
+    pendingRevision: null,
+  });
+
+  const register = async (live: LiveSession) => {
+    sessions.set(live.session.id, live);
+    broadcast({ type: "session-updated", session: live.session });
+    await live.store
+      .startSessionLog({
+        sessionId: live.session.id,
+        title: live.session.title,
+        mode: live.session.mode,
+        startedAt: live.session.startedAt,
+      })
+      .catch((error) => reportError(errorText(error), live.session.id));
   };
 
   return {
@@ -370,8 +424,8 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
       const mode = deps.getMode(input.mode);
       const store = storeFor(repoPath);
       const topic = input.topic.trim();
-      const live: LiveSession = {
-        session: {
+      const live = newLive(
+        {
           id: newId(),
           title: topic.slice(0, 60) || mode.label,
           mode: input.mode,
@@ -381,27 +435,8 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
         },
         mode,
         store,
-        input: null,
-        abort: null,
-        blocks: [],
-        rounds: [],
-        answers: new Map(),
-        pending: new Map(),
-        questionCount: 0,
-        blockCount: 0,
-        summaryWritten: false,
-        pendingRevision: null,
-      };
-      sessions.set(live.session.id, live);
-      broadcast({ type: "session-updated", session: live.session });
-      await store
-        .startSessionLog({
-          sessionId: live.session.id,
-          title: live.session.title,
-          mode: input.mode,
-          startedAt: live.session.startedAt,
-        })
-        .catch((error) => reportError(errorText(error), live.session.id));
+      );
+      await register(live);
       await emitPlan(repoPath, store);
       const kickoff = mode.buildKickoffPrompt(topic);
       addBlock(live, { kind: "user", id: blockId(live), text: kickoff, at: now().toISOString() });
@@ -410,6 +445,90 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
     },
 
     sendMessage,
+
+    /** The session as the browser sees it (the pop-out terminal needs its repo and Claude id). */
+    getSession: (sessionId: string): Session | undefined => sessions.get(sessionId)?.session,
+
+    /**
+     * Forks a session to explore an alternative (SPEC 3.5): a new Octoplan session in the
+     * same repo and mode whose query resumes the parent's Claude session with forkSession,
+     * recorded as a B-record in docs/plan/branches.md.
+     */
+    branch: async (sessionId: string, title: string, fromBlockId?: string) => {
+      const parent = getLive(sessionId);
+      if (!parent) return null;
+      const parentClaudeId = parent.session.claudeSessionId;
+      if (!parentClaudeId) {
+        reportError(BRANCH_NOT_READY_MESSAGE, sessionId);
+        return null;
+      }
+      const fromBlock = fromBlockId ? parent.blocks.find((b) => b.id === fromBlockId) : undefined;
+      if (fromBlockId && !fromBlock) {
+        reportError(`Block ${fromBlockId} is not part of this session.`, sessionId);
+        return null;
+      }
+      const cleanTitle = title.trim().slice(0, 60) || `${parent.session.title} (branch)`;
+      const child = newLive(
+        {
+          id: newId(),
+          title: cleanTitle,
+          mode: parent.session.mode,
+          repoPath: parent.session.repoPath,
+          status: "starting",
+          startedAt: now().toISOString(),
+          parentSessionId: parent.session.id,
+        },
+        parent.mode,
+        parent.store,
+      );
+      // The forked Claude remembers the parent's Q ids, so the branch's continue after them.
+      child.questionCount = parent.questionCount;
+      child.forkOf = parentClaudeId;
+      await register(child);
+      broadcast({ type: "session-updated", session: parent.session });
+      let branchId: string | null = null;
+      try {
+        const record = await parent.store.upsertBranch({
+          title: cleanTitle,
+          sessionId: child.session.id,
+          parentSessionId: parent.session.id,
+          ...(fromBlockId ? { forkedFromBlockId: fromBlockId } : {}),
+          status: "exploring",
+          body: "",
+        });
+        branchId = record.id;
+      } catch (error) {
+        reportError(`Could not record the branch: ${errorText(error)}`, child.session.id);
+      }
+      broadcast({
+        type: "notice",
+        message: branchId ? `Branched ${branchId}: ${cleanTitle}` : `Branched: ${cleanTitle}`,
+        sessionId: child.session.id,
+      });
+      pushTurn(child, branchTurn(cleanTitle, fromBlock));
+      return child.session;
+    },
+
+    /** Brainstorm: asks Claude to turn the repo's starred ideas into decisions. */
+    converge: async (sessionId: string) => {
+      const live = getLive(sessionId);
+      if (!live) return;
+      if (live.session.status === "ended" && !live.session.claudeSessionId) {
+        reportError("This session ended before Claude started, so it can't converge.", sessionId);
+        return;
+      }
+      try {
+        const { ideas } = await live.store.snapshot();
+        if (!ideas.some((idea) => idea.status === "starred")) {
+          reportError(NOTHING_STARRED_MESSAGE, sessionId);
+          return;
+        }
+        // An ended or failed session is resumed from its Claude session id by liveInput.
+        pushTurn(live, buildConvergeTurn(ideas));
+      } catch (error) {
+        reportError(`Could not converge: ${errorText(error)}`, sessionId);
+      }
+    },
 
     answerRound: async (sessionId: string, roundId: string, answers: Answer[]) => {
       const live = getLive(sessionId);

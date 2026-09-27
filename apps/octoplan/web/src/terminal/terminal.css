@@ -1,0 +1,95 @@
+/* Pop-out terminal: Octogent's terminal look (header gradient, --terminal-bg body, amber cursor). */
+
+.op-terminal {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 18rem;
+  height: 100%;
+  border: 1px solid var(--border-subtle);
+  background: var(--terminal-bg);
+}
+
+.op-terminal-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.3rem 0.6rem;
+  background: linear-gradient(
+    180deg,
+    var(--terminal-header-bg-top),
+    var(--terminal-header-bg-bottom)
+  );
+  color: var(--terminal-header-text);
+  font-size: 0.72rem;
+  letter-spacing: var(--control-letter-spacing);
+}
+
+.op-terminal-title {
+  font-family: "Silkscreen", cursive;
+  flex: 1;
+}
+
+.op-terminal-status {
+  padding: 0.05rem 0.35rem;
+  border: 1px solid currentColor;
+  font-size: 0.65rem;
+}
+
+.op-terminal-status--open {
+  color: var(--term-green);
+}
+
+.op-terminal-status--connecting {
+  color: var(--term-warning);
+}
+
+.op-terminal-status--error {
+  color: #ff8a8a;
+}
+
+.op-terminal-close {
+  font-family: var(--font-main);
+  font-size: 0.7rem;
+  color: var(--terminal-header-text);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--terminal-header-text) 45%, transparent);
+  padding: 0.1rem 0.5rem;
+  cursor: pointer;
+}
+
+.op-terminal-close:hover,
+.op-terminal-close:focus-visible {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  outline: none;
+}
+
+.op-terminal-body {
+  position: relative;
+  min-height: 0;
+  padding: 0.35rem 0 0.35rem 0.45rem;
+}
+
+.op-terminal-mount,
+.op-terminal-mount .xterm {
+  height: 100%;
+  width: 100%;
+}
+
+.op-terminal-mount .xterm-viewport {
+  background: var(--terminal-bg);
+  overflow-y: scroll !important;
+  scrollbar-width: thin;
+  scrollbar-color: var(--terminal-scrollbar-thumb) var(--terminal-scrollbar-track);
+}
+
+.op-terminal-overlay {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.6rem;
+  padding: 0.35rem 0.6rem;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+}

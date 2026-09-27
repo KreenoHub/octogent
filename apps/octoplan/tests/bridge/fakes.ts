@@ -9,7 +9,7 @@ import type {
   SDKUserMessage,
 } from "@anthropic-ai/claude-agent-sdk";
 import type { ServerEvent } from "@octogent/octoplan-protocol";
-import type { BridgeDeps, QueryFn } from "../../server/bridge/types";
+import type { BridgeDeps, PtyFactory, PtyProcess, QueryFn } from "../../server/bridge/types";
 import { applyCoverageUpdate, getMode } from "../../server/modes";
 import { createFsPlanStore } from "../../server/store/fsPlanStore";
 
@@ -129,4 +129,57 @@ export const until = async (check: () => boolean | Promise<boolean>, timeoutMs =
     await new Promise((r) => setTimeout(r, 10));
   }
   throw new Error("Timed out waiting for condition");
+};
+
+export type FakePty = PtyProcess & {
+  written: string[];
+  resizes: Array<[number, number]>;
+  killed: boolean;
+  emitData: (data: string) => void;
+  emitExit: (exitCode: number) => void;
+};
+
+export type FakeSpawn = {
+  file: string;
+  args: string[];
+  options: Parameters<PtyFactory>[2];
+  pty: FakePty;
+};
+
+/** A PtyFactory that records spawns; tests never start a real PTY. */
+export const createFakePtyFactory = () => {
+  const spawns: FakeSpawn[] = [];
+  const spawnPty: PtyFactory = (file, args, options) => {
+    const dataListeners: Array<(data: string) => void> = [];
+    const exitListeners: Array<(event: { exitCode: number }) => void> = [];
+    const pty: FakePty = {
+      written: [],
+      resizes: [],
+      killed: false,
+      onData: (listener) => {
+        dataListeners.push(listener);
+      },
+      onExit: (listener) => {
+        exitListeners.push(listener);
+      },
+      write: (data) => {
+        pty.written.push(data);
+      },
+      resize: (cols, rows) => {
+        pty.resizes.push([cols, rows]);
+      },
+      kill: () => {
+        pty.killed = true;
+      },
+      emitData: (data) => {
+        for (const listener of dataListeners) listener(data);
+      },
+      emitExit: (exitCode) => {
+        for (const listener of exitListeners) listener({ exitCode });
+      },
+    };
+    spawns.push({ file, args, options, pty });
+    return pty;
+  };
+  return { spawnPty, spawns };
 };

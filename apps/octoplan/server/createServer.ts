@@ -4,9 +4,11 @@ import {
   type ClientEvent,
   PROTOCOL_VERSION,
   type ServerEvent,
+  TERMINAL_PATH_RE,
   parseClientEvent,
 } from "@octogent/octoplan-protocol";
 import { WebSocket, WebSocketServer } from "ws";
+import { TERMINAL_MESSAGES, attachTerminal } from "./bridge/popOut";
 import { createSessionManager } from "./bridge/sessionManager";
 import type { BridgeDeps } from "./bridge/types";
 
@@ -38,6 +40,24 @@ const handleRequest = (request: IncomingMessage, response: ServerResponse) => {
 export const NO_BRIDGE_MESSAGE =
   "This Octoplan server was started without a Claude bridge, so sessions are unavailable.";
 
+export const notWiredMessage = (type: string) => `Not wired yet: ${type}`;
+
+const pathOf = (url: string | undefined) => {
+  try {
+    return new URL(url ?? "/", "http://localhost").pathname;
+  } catch {
+    return null;
+  }
+};
+
+const decodeSegment = (segment: string) => {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return null;
+  }
+};
+
 export const startOctoplanServer = (options: {
   host: string;
   port: number;
@@ -45,7 +65,32 @@ export const startOctoplanServer = (options: {
   deps?: BridgeDeps;
 }): Promise<OctoplanServer> => {
   const httpServer = createServer(handleRequest);
-  const wss = new WebSocketServer({ server: httpServer, path: WS_PATH });
+  // Both sockets share the HTTP server: /ws carries planning events, /ws/terminal/<id> a PTY.
+  const wss = new WebSocketServer({ noServer: true });
+  const terminalWss = new WebSocketServer({ noServer: true });
+  httpServer.on("upgrade", (request, socket, head) => {
+    const path = pathOf(request.url);
+    if (path === WS_PATH) {
+      wss.handleUpgrade(request, socket, head, (ws) => wss.emit("connection", ws, request));
+      return;
+    }
+    const match = path ? TERMINAL_PATH_RE.exec(path) : null;
+    const sessionId = match?.[1] ? decodeSegment(match[1]) : null;
+    if (!sessionId) {
+      socket.write("HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n");
+      socket.destroy();
+      return;
+    }
+    terminalWss.handleUpgrade(request, socket, head, (ws) => {
+      attachTerminal({
+        socket: ws,
+        sessionId,
+        session: manager?.getSession(sessionId),
+        spawnPty: options.deps?.spawnPty,
+        ...(manager ? {} : { refusal: TERMINAL_MESSAGES.noBridge }),
+      });
+    });
+  });
   const broadcast = (event: ServerEvent) => {
     for (const client of wss.clients) send(client, event);
   };
@@ -80,6 +125,28 @@ export const startOctoplanServer = (options: {
       case "capture-idea":
         await manager.captureIdea(event.repoPath, event.title);
         return;
+      case "branch-session":
+        await manager.branch(event.sessionId, event.title, event.fromBlockId);
+        return;
+      case "converge":
+        await manager.converge(event.sessionId);
+        return;
+      // Wave-2 events other tentacles implement; the octopus wires them at merge.
+      case "search-ideas":
+      case "update-idea":
+      case "generate-stages":
+      case "export-tentacle":
+      case "request-graph":
+      case "link-branch":
+        send(socket, { type: "error", message: notWiredMessage(event.type) });
+        return;
+      default: {
+        const unhandled: never = event;
+        send(socket, {
+          type: "error",
+          message: notWiredMessage((unhandled as { type: string }).type),
+        });
+      }
     }
   };
 
@@ -110,7 +177,8 @@ export const startOctoplanServer = (options: {
         close: () =>
           new Promise<void>((done) => {
             void manager?.dispose();
-            for (const client of wss.clients) client.terminate();
+            for (const client of [...wss.clients, ...terminalWss.clients]) client.terminate();
+            terminalWss.close();
             wss.close(() => httpServer.close(() => done()));
           }),
       });

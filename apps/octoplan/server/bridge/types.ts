@@ -1,6 +1,7 @@
 import type { Options, SDKMessage, SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { ServerEvent } from "@octogent/octoplan-protocol";
 import type { ApplyCoverageUpdate, GetMode } from "../modes/types";
+import type { BuildConvergeTurn } from "../modes/wave2Types";
 import type { PlanStoreFactory } from "../store/types";
 
 /** The slice of the Agent SDK's `query` the bridge uses; tests inject a scripted fake. */
@@ -33,6 +34,8 @@ export type BridgeDeps = {
   newId?: () => string;
   /** Wave 2: pop-out terminal (`claude --resume <id>` in a PTY). Absent = feature off. */
   spawnPty?: PtyFactory;
+  /** Wave 2: brainstorm converge turn; defaults to the modes tentacle's buildConvergeTurn. */
+  buildConvergeTurn?: BuildConvergeTurn;
 };
 
 export type Broadcast = (event: ServerEvent) => void;

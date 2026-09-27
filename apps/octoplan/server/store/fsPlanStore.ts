@@ -1,6 +1,6 @@
 // Filesystem PlanStore: docs/plan markdown in the target repo is the source of truth (D10).
 // Every write is read -> upsert -> write through the protocol codecs, so hand edits win.
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   type Answer,
@@ -22,8 +22,10 @@ import {
   type RecordDoc,
   type Risk,
   SESSIONS_DIR,
+  STAGES_DIR,
   type SessionLogEntry,
   type Stage,
+  branchCodec,
   coverageCodec,
   decisionCodec,
   gapCodec,
@@ -34,12 +36,16 @@ import {
   parseGoalDoc,
   parseRecordDoc,
   parseSessionLog,
+  parseStage,
   readItems,
   riskCodec,
   serializeGoalDoc,
   serializeRecordDoc,
+  serializeStage,
   sessionFileName,
   slugify,
+  stageFileName,
+  stageSchema,
   upsertItem,
 } from "@octogent/octoplan-protocol";
 import { FileWriter, readTextOrNull } from "./fsIo";
@@ -73,6 +79,7 @@ export type FsPlanStoreOptions = {
 type ListFileKey = Exclude<PlanFileKey, "goal">;
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}/;
+const STAGE_FILE_RE = /^STAGE-(\d+)\.md$/;
 
 const today = () => {
   const now = new Date();
@@ -413,26 +420,87 @@ class FsPlanStore implements PlanStore {
     });
   }
 
-  // ---------- wave 2 (stubs until the store worker implements them) ----------
+  // ---------- wave 2: ideas, stages, branches ----------
 
-  async updateIdea(_idea: Idea): Promise<Idea> {
-    throw new Error("updateIdea: not implemented yet (wave 2, store tentacle)");
+  updateIdea(idea: Idea): Promise<Idea> {
+    return this.mutateList("ideas", (doc) => {
+      if (!findItem(doc, ideaCodec, idea.id)) {
+        throw new Error(`unknown idea ${idea.id} in ${PLAN_FILES.ideas.path}`);
+      }
+      const item = checked(ideaCodec, idea, PLAN_FILES.ideas.path);
+      return { doc: upsertItem(doc, ideaCodec, item), result: item };
+    });
+  }
+
+  private get stagesDir() {
+    return this.planPath(STAGES_DIR);
+  }
+
+  /** Stage indexes present on disk, from file names matching STAGE-<n>.md. */
+  private async stageFiles(): Promise<Array<{ index: number; path: string }>> {
+    let names: string[];
+    try {
+      names = await readdir(this.stagesDir);
+    } catch {
+      return [];
+    }
+    return names.flatMap((name) => {
+      const match = STAGE_FILE_RE.exec(name);
+      return match?.[1]
+        ? [{ index: Number.parseInt(match[1], 10), path: join(this.stagesDir, name) }]
+        : [];
+    });
   }
 
   async readStages(): Promise<Stage[]> {
-    throw new Error("readStages: not implemented yet (wave 2, store tentacle)");
+    const stages: Stage[] = [];
+    for (const file of await this.stageFiles()) {
+      const text = await readTextOrNull(file.path).catch(() => null);
+      const stage = text === null ? null : parseStage(text);
+      if (stage) stages.push(stage);
+    }
+    return stages.sort((a, b) => a.index - b.index);
   }
 
-  async writeStages(_stages: readonly Stage[]): Promise<void> {
-    throw new Error("writeStages: not implemented yet (wave 2, store tentacle)");
+  async writeStages(stages: readonly Stage[]): Promise<void> {
+    const valid = stages.map((stage) => stageSchema.parse(stage));
+    const indexes = new Set<number>();
+    for (const stage of valid) {
+      if (indexes.has(stage.index)) throw new Error(`duplicate stage index ${stage.index}`);
+      indexes.add(stage.index);
+    }
+    await Promise.all(
+      valid.map((stage) =>
+        this.writer.mutate(join(this.stagesDir, stageFileName(stage.index)), () => ({
+          text: serializeStage(stage),
+          result: undefined,
+        })),
+      ),
+    );
+    for (const file of await this.stageFiles()) {
+      if (indexes.has(file.index)) continue;
+      await this.writer.mutate(file.path, () => ({ text: null, result: undefined }));
+      // Recorded before removal so the watcher treats the deletion as our own.
+      this.writer.hashes.set(file.path, undefined);
+      await rm(file.path, { force: true });
+    }
+    this.scheduleEmit();
   }
 
   async readBranches(): Promise<ConversationBranch[]> {
-    throw new Error("readBranches: not implemented yet (wave 2, store tentacle)");
+    const text = await readTextOrNull(this.planPath(PLAN_FILES.branches.path));
+    return text === null ? [] : readItems(parseRecordDoc(text), branchCodec);
   }
 
-  async upsertBranch(_input: BranchInput): Promise<ConversationBranch> {
-    throw new Error("upsertBranch: not implemented yet (wave 2, store tentacle)");
+  upsertBranch(input: BranchInput): Promise<ConversationBranch> {
+    return this.mutateList("branches", (doc) => {
+      const branch = checked(
+        branchCodec,
+        { ...input, id: input.id ?? nextId(doc, "B") },
+        PLAN_FILES.branches.path,
+      );
+      return { doc: upsertItem(doc, branchCodec, branch), result: branch };
+    });
   }
 
   // ---------- change events ----------

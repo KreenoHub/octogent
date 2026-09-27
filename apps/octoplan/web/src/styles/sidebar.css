@@ -98,3 +98,34 @@
     animation: none;
   }
 }
+
+/* Per-session terminal launcher, next to the session row. */
+.op-session-row {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.op-session-row .op-session {
+  flex: 1;
+  min-width: 0;
+}
+
+.op-session-terminal {
+  flex: none;
+  padding: 0 0.4rem;
+  font-family: var(--font-main);
+  font-size: 0.62rem;
+  letter-spacing: var(--control-letter-spacing);
+  color: var(--sidebar-text-muted);
+  background: var(--sidebar-row);
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.op-session-terminal:hover,
+.op-session-terminal:focus-visible {
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  outline: none;
+}

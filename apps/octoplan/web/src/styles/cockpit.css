@@ -1,6 +1,6 @@
 .op-shell {
   display: grid;
-  grid-template-rows: auto auto 1fr;
+  grid-template-rows: auto auto minmax(0, 1fr);
   height: 100%;
 }
 
@@ -111,4 +111,8 @@
 .op-coverage li[data-status="covered"] {
   border-left-color: var(--term-green);
   color: var(--text-primary);
+}
+
+.op-shell[data-terminal="open"] {
+  grid-template-rows: auto auto minmax(0, 1fr) minmax(12rem, 35vh);
 }

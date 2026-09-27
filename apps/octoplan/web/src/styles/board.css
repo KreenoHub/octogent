@@ -64,3 +64,83 @@
 .op-board-empty {
   padding: 0 0 0.4rem 0.9rem;
 }
+
+.op-board-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+
+/* Stages from generate-stages. */
+.op-stage-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.op-stage {
+  padding: 0.3rem 0 0.35rem;
+  border-bottom: 1px solid var(--sidebar-border);
+  font-size: 0.75rem;
+}
+
+.op-stage-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.op-stage-title {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-primary);
+}
+
+.op-stage-goal {
+  margin: 0.2rem 0 0 1rem;
+  color: var(--text-secondary);
+}
+
+/* Ideas area: search across repos. */
+.op-idea-search {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 0.4rem;
+}
+
+.op-idea-search-input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-main);
+  font-size: 0.78rem;
+  color: var(--text-primary);
+  background: var(--terminal-bg);
+  border: 1px solid var(--border-subtle);
+  padding: 0.3rem 0.45rem;
+}
+
+.op-idea-search-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.op-ideas .op-record {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.2rem 0;
+  font-size: 0.75rem;
+}
+
+.op-idea-repo {
+  flex: none;
+  max-width: 7rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.65rem;
+  color: var(--term-blue);
+}

@@ -179,3 +179,111 @@
   resize: vertical;
   min-height: 2.6rem;
 }
+
+/* Reply-card toolbar: quiet until the card is hovered or focused. */
+.op-card {
+  position: relative;
+}
+
+.op-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.35rem;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+
+.op-card:hover .op-card-actions,
+.op-card:focus-within .op-card-actions {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .op-card-actions {
+    opacity: 1;
+  }
+}
+
+.op-card-action {
+  font-family: var(--font-main);
+  font-size: 0.68rem;
+  letter-spacing: var(--control-letter-spacing);
+  padding: 0.1rem 0.45rem;
+  color: var(--text-secondary);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+}
+
+.op-card-action:hover,
+.op-card-action:focus-visible {
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  outline: none;
+}
+
+/* Pinned strip at the top of the conversation. */
+.op-pinned {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+  padding: 0.35rem 0.6rem;
+  background: var(--bg-surface-1);
+  border: 1px solid var(--term-blue);
+}
+
+.op-pinned-title {
+  flex: none;
+  font-family: "Silkscreen", cursive;
+  font-size: 0.7rem;
+  color: var(--term-blue);
+}
+
+.op-pinned-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+.op-pinned-item {
+  display: flex;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-2);
+}
+
+.op-pinned-jump,
+.op-pinned-unpin {
+  font-family: var(--font-main);
+  font-size: 0.72rem;
+  color: var(--text-primary);
+  background: none;
+  border: none;
+  padding: 0.15rem 0.4rem;
+  cursor: pointer;
+}
+
+.op-pinned-jump {
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.op-pinned-unpin {
+  color: var(--text-secondary);
+  border-left: 1px solid var(--border-subtle);
+}
+
+.op-pinned-jump:hover,
+.op-pinned-unpin:hover,
+.op-pinned-jump:focus-visible,
+.op-pinned-unpin:focus-visible {
+  color: var(--accent-primary);
+  outline: none;
+}

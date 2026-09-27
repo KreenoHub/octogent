@@ -1,7 +1,13 @@
 import { MODE_LABELS, groupSessionsByRepo, statusDot } from "../app/sessionView";
 import { useOctoplan } from "../app/useOctoplan";
 
-export const SessionSidebar = ({ onNewSession }: { onNewSession: () => void }) => {
+export const SessionSidebar = ({
+  onNewSession,
+  onOpenTerminal,
+}: {
+  onNewSession: () => void;
+  onOpenTerminal: (sessionId: string) => void;
+}) => {
   const { sessions, activeSessionId, setActiveSession } = useOctoplan();
   const groups = groupSessionsByRepo(sessions);
 
@@ -24,7 +30,7 @@ export const SessionSidebar = ({ onNewSession }: { onNewSession: () => void }) =
             <h3 className="op-repo-name">{group.name}</h3>
             <ul className="op-session-list">
               {group.sessions.map((session) => (
-                <li key={session.id}>
+                <li key={session.id} className="op-session-row">
                   <button
                     type="button"
                     className="op-session"
@@ -37,6 +43,15 @@ export const SessionSidebar = ({ onNewSession }: { onNewSession: () => void }) =
                     />
                     <span className="op-session-title">{session.title || "Untitled"}</span>
                     <span className="op-session-mode">{MODE_LABELS[session.mode]}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="op-session-terminal"
+                    aria-label={`Terminal for ${session.title || "Untitled"}`}
+                    title="Open this session's terminal"
+                    onClick={() => onOpenTerminal(session.id)}
+                  >
+                    Terminal
                   </button>
                 </li>
               ))}

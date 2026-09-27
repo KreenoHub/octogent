@@ -1,15 +1,26 @@
 import type { MessageBlock } from "@octogent/octoplan-protocol";
+import { useState } from "react";
+import { cardActionMessage, followUpQuote } from "../app/cardActions";
 import { selectPendingRounds } from "../app/planClientReducer";
 import { useOctoplan } from "../app/useOctoplan";
 import { roundAnchorId, useRoundActions } from "../app/useRoundActions";
-import { Composer } from "./Composer";
-import { SectionCard } from "./SectionCard";
+import { Composer, type ComposerPrefill } from "./Composer";
+import { PinnedStrip, sectionAnchorId } from "./PinnedStrip";
+import { type SectionBlock, SectionCard, type SectionCardActions } from "./SectionCard";
 import { UnansweredTray } from "./UnansweredTray";
 import { QuestionRoundSlot } from "./slots";
 
 const EMPTY: MessageBlock[] = [];
 
-const BlockView = ({ block, sessionId }: { block: MessageBlock; sessionId: string }) => {
+const BlockView = ({
+  block,
+  sessionId,
+  sectionActions,
+}: {
+  block: MessageBlock;
+  sessionId: string;
+  sectionActions: (section: SectionBlock) => SectionCardActions;
+}) => {
   const { rounds } = useOctoplan();
   const { answerRound, reviseAnswer } = useRoundActions(sessionId);
   switch (block.kind) {
@@ -27,7 +38,11 @@ const BlockView = ({ block, sessionId }: { block: MessageBlock; sessionId: strin
         </div>
       );
     case "section":
-      return <SectionCard block={block} />;
+      return (
+        <div id={sectionAnchorId(block.id)}>
+          <SectionCard block={block} actions={sectionActions(block)} />
+        </div>
+      );
     case "question-round": {
       const entry = rounds[block.roundId];
       return (
@@ -48,14 +63,50 @@ const BlockView = ({ block, sessionId }: { block: MessageBlock; sessionId: strin
   }
 };
 
+const NO_PINS: string[] = [];
+
 export const ConversationPane = ({ onFocus }: { onFocus: () => void }) => {
-  const { state, activeSessionId, blocksBySession } = useOctoplan();
+  const { state, activeSessionId, blocksBySession, sendClientEvent } = useOctoplan();
   const blocks = activeSessionId ? (blocksBySession[activeSessionId] ?? EMPTY) : EMPTY;
   const pending = activeSessionId ? selectPendingRounds(state, activeSessionId) : [];
+  const [pinsBySession, setPinsBySession] = useState<Record<string, string[]>>({});
+  const [prefill, setPrefill] = useState<ComposerPrefill | null>(null);
+  const pinnedIds = activeSessionId ? (pinsBySession[activeSessionId] ?? NO_PINS) : NO_PINS;
+  const pinned = pinnedIds.flatMap((id) => {
+    const block = blocks.find((b) => b.id === id);
+    return block?.kind === "section" ? [block] : [];
+  });
+
+  const togglePin = (blockId: string) => {
+    if (!activeSessionId) return;
+    setPinsBySession((prev) => {
+      const current = prev[activeSessionId] ?? [];
+      const next = current.includes(blockId)
+        ? current.filter((id) => id !== blockId)
+        : [...current, blockId];
+      return { ...prev, [activeSessionId]: next };
+    });
+  };
+
+  const sectionActions = (section: SectionBlock): SectionCardActions => ({
+    pinned: pinnedIds.includes(section.id),
+    onTogglePin: () => togglePin(section.id),
+    onSend: (action) => {
+      if (!activeSessionId) return;
+      sendClientEvent({
+        type: "send-message",
+        sessionId: activeSessionId,
+        text: cardActionMessage(action, section),
+      });
+    },
+    onFollowUp: () =>
+      setPrefill((prev) => ({ text: followUpQuote(section), nonce: (prev?.nonce ?? 0) + 1 })),
+  });
 
   return (
     <section className="op-pane op-pane--center op-conversation" aria-label="Conversation">
       <h2 className="op-pane-title">CONVERSATION</h2>
+      <PinnedStrip sections={pinned} onUnpin={togglePin} />
       <UnansweredTray pending={pending} onFocus={onFocus} />
       <div className="op-stream">
         {!activeSessionId ? (
@@ -64,11 +115,16 @@ export const ConversationPane = ({ onFocus }: { onFocus: () => void }) => {
           <p className="op-empty">Waiting for Claude…</p>
         ) : (
           blocks.map((block) => (
-            <BlockView key={block.id} block={block} sessionId={activeSessionId} />
+            <BlockView
+              key={block.id}
+              block={block}
+              sessionId={activeSessionId}
+              sectionActions={sectionActions}
+            />
           ))
         )}
       </div>
-      <Composer sessionId={activeSessionId} />
+      <Composer sessionId={activeSessionId} prefill={prefill} />
     </section>
   );
 };

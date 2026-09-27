@@ -130,3 +130,121 @@
   margin: 4rem auto;
   font-size: 0.9rem;
 }
+
+/* Small modals (idea, branch, export). */
+.op-dialog--wide {
+  width: min(40rem, calc(100vw - 2rem));
+}
+
+.op-dialog-hint {
+  margin: -0.4rem 0 0;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.op-field-textarea {
+  font-family: var(--font-main);
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  background: var(--terminal-bg);
+  border: 1px solid var(--border-subtle);
+  padding: 0.45rem 0.55rem;
+  resize: vertical;
+}
+
+.op-field-textarea:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.op-export-result {
+  display: block;
+  margin: 0;
+  font-size: 0.78rem;
+  padding: 0.35rem 0.5rem;
+  border-left: 3px solid var(--border-subtle);
+}
+
+.op-export-result--ok {
+  border-left-color: var(--term-green);
+  color: var(--term-green);
+}
+
+.op-export-result--fail {
+  border-left-color: var(--term-red);
+  color: var(--term-red);
+}
+
+.op-export-result--wait {
+  color: var(--text-secondary);
+}
+
+/* G: branch graph overlay. */
+.op-graph {
+  position: fixed;
+  inset: 2.5rem 1.5rem 1.5rem;
+  z-index: 15;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 1rem;
+  overflow: auto;
+  color: var(--text-primary);
+  background: var(--bg-canvas);
+  border: 1px solid var(--control-border-strong);
+}
+
+.op-graph-empty {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: start;
+}
+
+/* Bottom terminal panel. */
+.op-terminal-panel {
+  min-height: 0;
+  overflow: hidden;
+  background: var(--terminal-bg);
+  border-top: 1px solid var(--control-border-strong);
+}
+
+/* Toasts for server notices. */
+.op-toasts {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 30;
+  display: grid;
+  gap: 0.4rem;
+  justify-items: end;
+  pointer-events: none;
+}
+
+.op-toast {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: 24rem;
+  padding: 0.45rem 0.6rem 0.45rem 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  background: var(--bg-surface-1);
+  border: 1px solid var(--term-green);
+  pointer-events: auto;
+}
+
+.op-toast-close {
+  font-family: var(--font-main);
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.op-toast-close:hover,
+.op-toast-close:focus-visible {
+  color: var(--accent-primary);
+  outline: none;
+}

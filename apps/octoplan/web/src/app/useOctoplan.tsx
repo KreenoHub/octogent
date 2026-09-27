@@ -1,4 +1,4 @@
-import { type ClientEvent, clientEventSchema } from "@octogent/octoplan-protocol";
+import { type ClientEvent, type Session, clientEventSchema } from "@octogent/octoplan-protocol";
 import {
   type ReactNode,
   createContext,
@@ -26,7 +26,18 @@ export type Octoplan = {
   rounds: Record<string, RoundEntry>;
   planByRepo: PlanClientState["planByRepo"];
   errors: PlanClientState["errors"];
+  /** Server notices, oldest first (capped). Toasts expire them in the UI, not here. */
+  notices: PlanClientState["notices"];
+  /** The latest `search-ideas` reply, or null before the first search. */
+  ideaSearch: PlanClientState["ideaSearch"];
+  stagesByRepo: PlanClientState["stagesByRepo"];
+  /** Tentacle export replies, oldest first; `seq` orders them against a submit. */
+  exportResults: PlanClientState["exportResults"];
+  graphByRepo: PlanClientState["graphByRepo"];
+  /** True from a sent `request-graph` until its `graph` reply (or a server error). */
+  graphLoadingByRepo: PlanClientState["graphLoadingByRepo"];
   activeSessionId: string | null;
+  activeSession: Session | null;
   /** Repo of the active session, or the first repo with a plan when no session is active. */
   activeRepo: string | null;
   setActiveSession: (sessionId: string | null) => void;
@@ -75,6 +86,9 @@ export const OctoplanProvider = ({
         return false;
       }
       activeTransport.send(parsed.data);
+      if (parsed.data.type === "request-graph") {
+        dispatch({ type: "local/graph-requested", repoPath: parsed.data.repoPath });
+      }
       return true;
     },
     [activeTransport],
@@ -85,7 +99,7 @@ export const OctoplanProvider = ({
       chosenSessionId && state.sessions.some((s) => s.id === chosenSessionId)
         ? chosenSessionId
         : (state.sessions[0]?.id ?? null);
-    const activeSession = state.sessions.find((s) => s.id === activeSessionId);
+    const activeSession = state.sessions.find((s) => s.id === activeSessionId) ?? null;
     const activeRepo = activeSession?.repoPath ?? Object.keys(state.planByRepo)[0] ?? null;
     return {
       connection: { status, serverVersion: state.serverVersion },
@@ -94,7 +108,14 @@ export const OctoplanProvider = ({
       rounds: state.rounds,
       planByRepo: state.planByRepo,
       errors: state.errors,
+      notices: state.notices,
+      ideaSearch: state.ideaSearch,
+      stagesByRepo: state.stagesByRepo,
+      exportResults: state.exportResults,
+      graphByRepo: state.graphByRepo,
+      graphLoadingByRepo: state.graphLoadingByRepo,
       activeSessionId,
+      activeSession,
       activeRepo,
       setActiveSession,
       sendClientEvent,

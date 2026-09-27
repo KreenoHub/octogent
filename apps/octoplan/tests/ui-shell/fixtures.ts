@@ -1,10 +1,13 @@
 import type {
   Answer,
   Decision,
+  GitGraph,
+  Idea,
   MessageBlock,
   PlanSnapshot,
   QuestionRound,
   Session,
+  Stage,
 } from "@octogent/octoplan-protocol";
 
 export const session = (overrides: Partial<Session> = {}): Session => ({
@@ -85,5 +88,34 @@ export const plan = (overrides: Partial<PlanSnapshot> = {}): PlanSnapshot => ({
   ideas: [],
   coverage: { dimensions: [] },
   goal: null,
+  ...overrides,
+});
+
+export const idea = (overrides: Partial<Idea> = {}): Idea => ({
+  id: "I1",
+  title: "Offline mode",
+  date: "2026-09-26",
+  tags: [],
+  status: "inbox",
+  body: "",
+  ...overrides,
+});
+
+export const stage = (overrides: Partial<Stage> = {}): Stage => ({
+  index: 1,
+  title: "Skeleton",
+  goal: "App boots with an empty cockpit",
+  prompt: "Build the skeleton, then stop at the checkpoint.",
+  ...overrides,
+});
+
+export const graph = (overrides: Partial<GitGraph> = {}): GitGraph => ({
+  repoPath: "C:\\repos\\alpha",
+  commits: [{ hash: "abc", parents: [], refs: ["main"], subject: "init", time: 1, lane: 0 }],
+  branches: [],
+  prs: [],
+  lanes: [],
+  conversationBranches: [],
+  ghAvailable: false,
   ...overrides,
 });

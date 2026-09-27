@@ -90,10 +90,11 @@ describe("session sidebar", () => {
     expect(
       within(alpha)
         .getAllByRole("button")
+        .filter((b) => b.classList.contains("op-session"))
         .map((b) => b.textContent),
     ).toEqual([expect.stringContaining("Alpha two"), expect.stringContaining("Alpha one")]);
-    const betaOne = within(beta).getByRole("button", { name: /Beta one/ });
-    const alphaOne = within(alpha).getByRole("button", { name: /Alpha one/ });
+    const betaOne = within(beta).getByRole("button", { name: /^Beta one/ });
+    const alphaOne = within(alpha).getByRole("button", { name: /^Alpha one/ });
     const waiting = within(beta).getByTitle("waiting-for-answer");
     expect(waiting).toHaveClass("op-dot--waiting-for-answer");
     expect(within(alpha).getByTitle("ended")).toHaveClass("op-dot--ended");

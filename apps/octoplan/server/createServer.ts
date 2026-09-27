@@ -75,7 +75,7 @@ export const startOctoplanServer = (options: {
         await manager.reviseAnswer(event.sessionId, event.answer);
         return;
       case "stop-session":
-        manager.stop(event.sessionId);
+        await manager.stop(event.sessionId);
         return;
       case "capture-idea":
         await manager.captureIdea(event.repoPath, event.title);

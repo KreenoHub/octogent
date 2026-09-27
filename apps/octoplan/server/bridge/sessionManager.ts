@@ -39,7 +39,14 @@ type LiveSession = {
   pending: Map<string, PendingRound>;
   questionCount: number;
   blockCount: number;
+  summaryWritten: boolean;
 };
+
+/** Claude's closing `## Summary` reply section (the mode prompts end with one). */
+export const isSummaryHeading = (heading: string) => /^summary\b/i.test(heading.trim());
+
+export const fallbackSummary = (rounds: number, answers: number) =>
+  `Stopped by the user after ${rounds} question round${rounds === 1 ? "" : "s"} (${answers} answer${answers === 1 ? "" : "s"}) before Claude wrote a closing summary. See DECISIONS.md, GAPS.md and COVERAGE.md for what was settled.`;
 
 export const INVALID_ROUND_MESSAGE =
   "Octoplan shows 1–4 questions per round, each with a question, a header and 2–4 options that have a label and a description. Ask again in that shape.";
@@ -185,6 +192,12 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
               markdown: section.markdown,
               at: now().toISOString(),
             });
+            if (isSummaryHeading(section.heading) && section.markdown) {
+              live.summaryWritten = true;
+              await live.store
+                .writeSessionSummary(live.session.id, section.markdown)
+                .catch((error) => reportError(errorText(error), live.session.id));
+            }
           }
         } else if (block.type === "tool_use" && block.name !== "AskUserQuestion") {
           addBlock(live, {
@@ -317,6 +330,7 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
         pending: new Map(),
         questionCount: 0,
         blockCount: 0,
+        summaryWritten: false,
       };
       sessions.set(live.session.id, live);
       broadcast({ type: "session-updated", session: live.session });
@@ -402,7 +416,7 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
       }
     },
 
-    stop: (sessionId: string) => {
+    stop: async (sessionId: string) => {
       const live = getLive(sessionId);
       if (!live) return;
       for (const pending of [...live.pending.values()]) {
@@ -411,6 +425,13 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
       live.abort?.abort();
       live.input?.close();
       setStatus(live, "ended");
+      if (!live.summaryWritten) {
+        live.summaryWritten = true;
+        const answers = [...live.answers.values()].reduce((sum, list) => sum + list.length, 0);
+        await live.store
+          .writeSessionSummary(live.session.id, fallbackSummary(live.rounds.length, answers))
+          .catch((error) => reportError(errorText(error), live.session.id));
+      }
     },
 
     captureIdea: async (repoPath: string, title: string) => {

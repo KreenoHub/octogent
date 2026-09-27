@@ -1,10 +1,13 @@
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import type { PermissionResult } from "@anthropic-ai/claude-agent-sdk";
-import type { Answer, ServerEvent } from "@octogent/octoplan-protocol";
+import { type Answer, type ServerEvent, parseSessionLog } from "@octogent/octoplan-protocol";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   INVALID_ROUND_MESSAGE,
   type SessionManager,
   createSessionManager,
+  fallbackSummary,
 } from "../../server/bridge/sessionManager";
 import { PLANNING_BUILTIN_TOOLS, PLANNING_DENY_MESSAGE } from "../../server/bridge/toolPolicy";
 import { createFsPlanStore } from "../../server/store/fsPlanStore";
@@ -25,6 +28,13 @@ const cleanups: Array<() => void | Promise<void>> = [];
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0)) await cleanup();
 });
+
+const readSessionLog = (repoDir: string) => {
+  const dir = join(repoDir, "docs", "plan", "sessions");
+  const [file] = readdirSync(dir);
+  if (!file) throw new Error("no session log written");
+  return parseSessionLog(readFileSync(join(dir, file), "utf8"));
+};
 
 const setup = (script: Parameters<typeof createFakeQuery>[0]) => {
   const repo = tempRepo();
@@ -202,12 +212,31 @@ describe("session manager", () => {
     });
     const session = await manager.start({ repoPath: repo.dir, mode: "brainstorm", topic: "t" });
     await log.waitFor(isType("question-round"));
-    manager.stop(session?.id ?? "");
+    await manager.stop(session?.id ?? "");
     await until(() => results.length === 1);
     expect(results[0]).toMatchObject({ behavior: "deny", interrupt: true });
     expect(
       log.events.some((e) => e.type === "session-updated" && e.session.status === "ended"),
     ).toBe(true);
+    // No closing summary from Claude, so the log gets the factual fallback.
+    expect(readSessionLog(repo.dir).summary).toBe(fallbackSummary(1, 0));
+  });
+
+  it("writes Claude's closing ## Summary section into the session log", async () => {
+    const { repo, log, manager } = setup(async function* ({ next }) {
+      await next();
+      yield init("claude-6");
+      yield assistantText("## Summary\n- Goal: tiny habit CLI\n- Decisions: D1, D2");
+      yield result();
+    });
+    const session = await manager.start({ repoPath: repo.dir, mode: "quick-align", topic: "t" });
+    await until(() =>
+      log.events.some((e) => e.type === "session-updated" && e.session.status === "idle"),
+    );
+    expect(readSessionLog(repo.dir).summary).toBe("- Goal: tiny habit CLI\n- Decisions: D1, D2");
+    // Stopping later keeps Claude's summary instead of overwriting it with the fallback.
+    await manager.stop(session?.id ?? "");
+    expect(readSessionLog(repo.dir).summary).toBe("- Goal: tiny habit CLI\n- Decisions: D1, D2");
   });
 
   it("replays sessions, cards, pending rounds and plans to a reconnecting client", async () => {

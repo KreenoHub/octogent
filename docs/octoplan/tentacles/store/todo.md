@@ -7,4 +7,4 @@
 
 ## Wave 2
 
-- [ ] **Idea inbox across projects** — `IDEAS.md` per repo plus a small registry of known repos in `~/.octoplan/projects.json` (paths only; content stays in the repos). `searchIdeas(query)` scans all registered repos' IDEAS.md with case-insensitive matching on title, tags and body. Done when a test with two temp repos finds ideas in both and survives one repo being deleted.
+- [x] **Idea inbox across projects** — `IDEAS.md` per repo plus a small registry of known repos in `~/.octoplan/projects.json` (paths only; content stays in the repos). `searchIdeas(query)` scans all registered repos' IDEAS.md with case-insensitive matching on title, tags and body. Done when a test with two temp repos finds ideas in both and survives one repo being deleted.

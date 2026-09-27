@@ -293,3 +293,12 @@ Before any wave-2 worker starts, the octopus seeds:
 - new dependencies (node-pty, xterm), so no worker edits package.json
 
 Each has a throwing stub, so the tree type-checks throughout. Workers fill in their own folders; the octopus wires the server events and mounts the slots at merge. Idea status gains `parked`.
+
+<!-- op:id=D34 -->
+## D34 — Session-free plan operations live in planOps.ts
+- date: 2026-09-27
+- status: active
+- source: wave 2 octopus
+- depends-on: D33
+
+Six events need no Claude session: idea search, idea actions, stages, tentacle export, git graph and branch links. They go through `server/planOps.ts`, not the session manager. The manager exposes its per-repo `storeFor`, so plan changes still broadcast through the store subscriptions. Integrations and the idea registry are optional deps, and without them the server answers with a clear explanation. Converge marks the starred ideas adopted once their turn has been sent.

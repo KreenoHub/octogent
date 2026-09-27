@@ -9,9 +9,15 @@ import { SessionSidebar } from "./SessionSidebar";
 
 type Overlay = "none" | "focus" | "new-session";
 
+/** `?focus=1` opens focus mode on load: a bookmarkable "just answer questions" view. */
+export const initialOverlay = (search: string): Overlay =>
+  new URLSearchParams(search).get("focus") === "1" ? "focus" : "none";
+
 export const CockpitLayout = () => {
   const { connection } = useOctoplan();
-  const [overlay, setOverlay] = useState<Overlay>("none");
+  const [overlay, setOverlay] = useState<Overlay>(() =>
+    initialOverlay(typeof window === "undefined" ? "" : window.location.search),
+  );
 
   useGlobalHotkeys({
     f: () => setOverlay((current) => (current === "focus" ? "none" : "focus")),

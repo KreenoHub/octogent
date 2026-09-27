@@ -16,6 +16,7 @@ import {
   type Question,
   type QuestionRound,
   parseServerEvent,
+  parseSessionLog,
 } from "@octogent/octoplan-protocol";
 import { WebSocket } from "ws";
 
@@ -49,6 +50,9 @@ const answeredRounds: QuestionRound[] = [];
 const modifiersUsed = new Set<string>();
 let sectionBlocks = 0;
 let toolBlocks = 0;
+// Mode prompt rule 4: Claude answers a REVISION turn with a `## Revision Q<n>` section.
+let revisedQuestionId: string | null = null;
+let revisionAcknowledged = false;
 
 const answerRound = (round: QuestionRound) => {
   const answers: Answer[] = round.questions.map((question, index) => {
@@ -89,6 +93,7 @@ const reviseFirstAnswer = () => {
   const alternative = question.options.find((o) => o.label !== current) ?? question.options[0];
   if (!alternative) return;
   revised = true;
+  revisedQuestionId = question.id;
   log(`revising ${question.id} to "${alternative.label}"`);
   send({
     type: "revise-answer",
@@ -124,9 +129,17 @@ const finish = (reason: string) => {
   console.log(
     `GOAL.md: ${existsSync(goal) ? `${readFileSync(goal, "utf8").split("\n").length} lines` : "missing"}`,
   );
+  const sessionFile = files.find((f) => f.startsWith("sessions") && f.endsWith(".md"));
+  const summary = sessionFile
+    ? parseSessionLog(readFileSync(join(planDir, sessionFile), "utf8")).summary
+    : "";
+  console.log(`revision acknowledged by Claude: ${revisionAcknowledged}`);
+  console.log(`session summary: ${summary ? `${summary.split("\n").length} lines` : "missing"}`);
   const ok =
     roundsAnswered >= 2 &&
     revised &&
+    revisionAcknowledged &&
+    summary.length > 0 &&
     files.some((f) => f.startsWith("sessions")) &&
     files.includes("DECISIONS.md") &&
     files.includes("PARKED.md") &&
@@ -168,7 +181,17 @@ socket.on("message", (raw) => {
     }
     case "block":
       if (event.sessionId !== sessionId) return;
-      if (event.block.kind === "section") sectionBlocks++;
+      if (event.block.kind === "section") {
+        sectionBlocks++;
+        const heading = event.block.heading;
+        if (
+          revisedQuestionId &&
+          new RegExp(`revision\\s+${revisedQuestionId}\\b`, "i").test(heading)
+        ) {
+          revisionAcknowledged = true;
+          log(`Claude answered the revision: "## ${heading}"`);
+        }
+      }
       if (event.block.kind === "tool") toolBlocks++;
       break;
     case "question-round":

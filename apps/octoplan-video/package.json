@@ -1,0 +1,27 @@
+{
+  "name": "@octogent/octoplan-video",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Motion-graphics tutorial video for Octoplan + Octogent (Remotion).",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts Tutorial ../../docs/octoplan/tutorial/octoplan-octogent-tutorial.mp4",
+    "still": "remotion still src/index.ts Tutorial",
+    "capture": "node tools/captureUi.mjs",
+    "build": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.529",
+    "@remotion/google-fonts": "4.0.529",
+    "@remotion/transitions": "4.0.529",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "remotion": "4.0.529"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.10",
+    "@types/ws": "^8.18.1",
+    "ws": "^8.19.0"
+  }
+}

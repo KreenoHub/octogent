@@ -1,0 +1,98 @@
+[
+  {
+    "name": "octoplan-cockpit",
+    "url": "http://127.0.0.1:5191/?session=963e3a8b-fe14-48e0-9022-23bba1a8d7d5",
+    "steps": [{ "waitFor": "[data-testid=question-round-slot]" }],
+    "settle": 1800
+  },
+  {
+    "name": "octoplan-cockpit-board-open",
+    "url": "http://127.0.0.1:5191/?session=963e3a8b-fe14-48e0-9022-23bba1a8d7d5",
+    "steps": [
+      { "waitFor": "[data-testid=question-round-slot]" },
+      { "clickText": "decisions" },
+      { "wait": 600 }
+    ],
+    "settle": 1500
+  },
+  {
+    "name": "octoplan-focus",
+    "url": "http://127.0.0.1:5191/?session=963e3a8b-fe14-48e0-9022-23bba1a8d7d5&focus=1",
+    "steps": [{ "waitFor": ".op-focus-round" }],
+    "settle": 1500
+  },
+  {
+    "name": "octoplan-new-session",
+    "url": "http://127.0.0.1:5191/?session=963e3a8b-fe14-48e0-9022-23bba1a8d7d5",
+    "steps": [
+      { "waitFor": "[data-testid=question-round-slot]" },
+      { "clickText": "new session" },
+      { "waitFor": ".op-dialog" }
+    ],
+    "settle": 1200
+  },
+  {
+    "name": "octoplan-idea",
+    "url": "http://127.0.0.1:5191/?session=963e3a8b-fe14-48e0-9022-23bba1a8d7d5",
+    "steps": [
+      { "waitFor": "[data-testid=question-round-slot]" },
+      { "key": "i" },
+      { "wait": 700 },
+      {
+        "type": {
+          "selector": "dialog input, .op-dialog input",
+          "text": "Share a streak card with a friend"
+        }
+      }
+    ],
+    "settle": 1200
+  },
+  {
+    "name": "octoplan-graph",
+    "url": "http://127.0.0.1:5191/?session=963e3a8b-fe14-48e0-9022-23bba1a8d7d5",
+    "steps": [
+      { "waitFor": "[data-testid=question-round-slot]" },
+      { "key": "g" },
+      { "waitFor": "[data-testid=branch-graph-slot] svg", "timeoutMs": 30000 }
+    ],
+    "settle": 2500
+  },
+  {
+    "name": "octoplan-brainstorm",
+    "url": "http://127.0.0.1:5191/?session=003dffac-250d-4cdb-9c4b-aa556f242e10",
+    "steps": [{ "waitFor": "[data-testid=brainstorm-slot]" }],
+    "settle": 1800
+  },
+  {
+    "name": "octoplan-stages",
+    "url": "http://127.0.0.1:5191/?session=963e3a8b-fe14-48e0-9022-23bba1a8d7d5",
+    "steps": [
+      { "waitFor": "[data-testid=question-round-slot]" },
+      { "clickText": "stages" },
+      { "waitFor": ".op-stages", "timeoutMs": 20000 }
+    ],
+    "settle": 1500
+  },
+  {
+    "name": "octoplan-export",
+    "url": "http://127.0.0.1:5191/?session=963e3a8b-fe14-48e0-9022-23bba1a8d7d5",
+    "steps": [
+      { "waitFor": "[data-testid=question-round-slot]" },
+      { "clickText": "export to octogent" },
+      { "waitFor": ".op-dialog--wide" }
+    ],
+    "settle": 1200
+  },
+  {
+    "name": "octogent-deck",
+    "url": "http://127.0.0.1:8787/",
+    "steps": [{ "wait": 2500 }, { "key": "2" }, { "wait": 2000 }],
+    "settle": 1500
+  },
+  {
+    "name": "octogent-agents",
+    "url": "http://127.0.0.1:8787/",
+    "steps": [{ "wait": 2500 }, { "key": "1" }, { "wait": 2000 }],
+    "settle": 1500
+  }
+]

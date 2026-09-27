@@ -87,7 +87,7 @@ describe("headless runner (D31, D45)", () => {
     ]);
   });
 
-  it("proposeHandoff: only plan_propose_handoff, last call wins, invalid tentacles dropped", async () => {
+  it("proposeHandoff: only plan_propose_handoff, last call wins, loose ids kept for normalizing, malformed entries dropped", async () => {
     const tentacle = {
       id: "bridge",
       name: "Bridge",
@@ -108,14 +108,15 @@ describe("headless runner (D31, D45)", () => {
       const tools = sdkServerTools(options);
       await tools.call(HANDOFF_TOOL, { tentacles: [{ ...tentacle, id: "old" }] });
       await tools.call(HANDOFF_TOOL, {
-        tentacles: [tentacle, { ...tentacle, id: "Not Valid!" }],
+        tentacles: [tentacle, { ...tentacle, id: "UI Shell" }, { id: "broken", todos: "nope" }],
       });
       yield result();
     });
     const runner = createHeadlessRunner({ query: fake.query });
     const proposed = await runner.proposeHandoff({ repoPath: "C:\\repo", prompt: "Split it." });
     expect(fake.calls[0]?.received).toEqual(["Split it."]);
-    expect(proposed).toEqual([tentacle]);
+    // normalizeHandoff (modes) slugs "UI Shell"; only structurally broken entries are dropped.
+    expect(proposed).toEqual([tentacle, { ...tentacle, id: "UI Shell" }]);
   });
 
   it("returns nothing when Claude calls no tool, and passes maxTurns through", async () => {

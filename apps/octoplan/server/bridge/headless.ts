@@ -3,11 +3,7 @@
 // single octoplan tool whose inputs are what the pass returns.
 import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 import type { Options, SdkMcpToolDefinition } from "@anthropic-ai/claude-agent-sdk";
-import {
-  type HandoffTentacle,
-  handoffTentacleSchema,
-  harvestCandidateSchema,
-} from "@octogent/octoplan-protocol";
+import { type HandoffTentacle, harvestCandidateSchema } from "@octogent/octoplan-protocol";
 import { z } from "zod";
 import type { HarvestCandidateInput } from "../store/types";
 import { createInputQueue } from "./inputQueue";
@@ -136,7 +132,8 @@ export const createHeadlessRunner: CreateHeadlessRunner = ({ query, maxTurns }) 
         async (args) => {
           const raw: unknown[] = Array.isArray(args.tentacles) ? args.tentacles : [];
           const valid = raw.flatMap((entry) => {
-            const parsed = handoffTentacleSchema.safeParse(entry);
+            // Loose shape: an id like "UI Shell" is slugged by normalizeHandoff, not dropped.
+            const parsed = handoffTentacleShape.safeParse(entry);
             return parsed.success ? [parsed.data] : [];
           });
           proposed = valid;

@@ -110,6 +110,7 @@ export const Markdown = ({ text }: { text: string }) => (
           );
         case "list": {
           const items = block.items.map((item, itemIndex) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: parsed fresh from immutable text on every render; items never reorder
             <li key={`${key}-${itemIndex}`}>{renderInline(item)}</li>
           ));
           return block.ordered ? <ol key={key}>{items}</ol> : <ul key={key}>{items}</ul>;

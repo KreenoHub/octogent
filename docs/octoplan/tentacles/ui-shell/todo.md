@@ -10,3 +10,24 @@
 
 - [x] **Card actions on reply sections** — a hover/focus toolbar on each `section` card: **pin** keeps it in a pinned strip at the top. **collapse** toggles it. **→ task** sends `send-message` asking Claude to turn the section into a todo item, and **→ decision** does the same for a decision via `plan_record_decision`. **ask follow-up** prefills the composer with a quote. **park** sends a message asking Claude to park it with an assumption. Done when tests assert each action's resulting client event or local state.
 - [x] **Idea capture (I)** — a global hotkey opens a small modal (title + optional tags) that sends `capture-idea` for the active repo. It closes on Enter/Esc, doesn't fire while typing, and a toast confirms the id. Done when a test presses I, submits, and asserts the event.
+
+## v2
+
+Planned in Octoplan (docs/plan/GOAL.md, DECISIONS.md D1–D43). Ids in brackets are the decisions each task implements; cite them in commit messages (D26).
+
+### Wave 3 — focus (D41)
+
+- [ ] [D14, D2] **Docked answer panel** — the pending round renders in a fixed dock above the composer (showing the latest prose digest line, R3); the stream keeps a compact stub that expands to the answered card. Replaces the jump-only UnansweredTray. Done when a component test with a long stream shows the pending round in the dock and a headless screenshot shows it visible without scrolling.
+- [ ] [D15] **One-line prose digest** — each assistant turn's prose shows its first line (or its headings) and expands on click; stored text is untouched. Done when a component test renders a 40-line reply as one line and the full text after a click.
+- [ ] [D19] **Grouped tool rows** — a turn's tool calls render as one summary row ("Read 4 files, recorded 3 decisions") that expands; plan-tool effects flash on the board. Done when a component test turns 7 tool calls into one row with the right counts.
+- [ ] [R3] **Expand-all hotkey** — one key expands every collapsed digest, chip and tool row in the stream, and again collapses them. Done when a component test toggles all three kinds with the key.
+
+### Wave 4 — memory (D41)
+
+- [ ] [D17, D9] **Needs-attention list** — the board lists stale decisions, unanswered rounds, tentative risks and pending harvest candidates (source + accept/reject). Done when a component test shows each kind and accept sends the accept event.
+
+### Wave 5 — overview (D41)
+
+- [ ] [D42, D22] **Tentacles n/m header button** — the cockpit header shows aggregate todo progress, opens G on click, and pulses when the count changes. Done when a component test shows the counts from a fixture summary and a click opens the G overlay.
+- [ ] [D9, D13] **Board sections** — ideas, stages and conversation branches sections, plus a cross-session view of every session in the repo. Done when a component test with the store aggregate fixture renders all four.
+- [ ] [D24] **Drift badges + History tab** — each decision shows implemented / untouched / diverged; a History tab shows the timeline. Done when a component test renders all three badges and the timeline in date order.

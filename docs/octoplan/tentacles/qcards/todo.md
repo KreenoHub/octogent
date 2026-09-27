@@ -8,3 +8,12 @@
 ## Wave 2
 
 _No wave-2 items. The question cards are fully MVP scope. Polish found while dogfooding goes here (Prompt 5)._
+
+## v2
+
+Planned in Octoplan (docs/plan/GOAL.md, DECISIONS.md D1–D43). Ids in brackets are the decisions each task implements; cite them in commit messages (D26).
+
+### Wave 3 — focus (D41)
+
+- [ ] [D25] **Answer chips** — an answered round renders one line per question ("header → answer" + modifier badge) and expands to the full card to revise. Done when a component test shows one chip per question and expanding reveals the revise control.
+- [ ] [D43] **Clamp option descriptions** — each option's description is one line; full text on hover or keyboard focus. Done when a component test shows the clamp class by default and the full text when the option has focus.

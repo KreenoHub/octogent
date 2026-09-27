@@ -10,3 +10,21 @@
 
 - [x] **Brainstorm board logic** — `server/modes/brainstorm.ts`: state transitions for ideas (inbox → starred / merged / killed / parked / adopted), merging two ideas into one with both ids recorded in the body, and a "converge" step that builds a user turn asking Claude to turn starred ideas into decisions. Done when tests cover every transition, including illegal ones being rejected.
 - [x] **Staged build prompts** — `server/modes/stages.ts`: from GOAL.md + DECISIONS.md, build `Stage[]` (each a self-contained prompt that builds one stage and stops at a testing checkpoint) and write them via `serializeStage` to `docs/plan/stages/STAGE-n.md` through the store. Done when a test with a fixture goal produces stages that round-trip through `parseStage`, and each prompt contains "Done when" and a stop instruction.
+
+## v2
+
+Planned in Octoplan (docs/plan/GOAL.md, DECISIONS.md D1–D43). Ids in brackets are the decisions each task implements; cite them in commit messages (D26).
+
+### Wave 4 — memory (D41)
+
+- [ ] [G1, D26] **Trace todos to decisions** — stages and exported tasks carry `decisions:` ids so export can stamp them (settles gap G1). Done when a stage built from a GOAL.md + DECISIONS.md fixture lists the D-ids behind each task and the export receives them.
+
+### Wave 5 — overview (D41)
+
+- [ ] [D39] **Live mode runs for the gate** — Quick align, Brainstorm and Devil's advocate each complete one live round with every question arriving as a card. Done when e2e:v2 prints a pass line for each of the three modes.
+
+### Dogfood fixes (found while planning v2 in Octoplan)
+
+- [ ] **Stage titles are truncated DoD text** — stages are titled after their first definition-of-done line cut at 60 chars (v2 Stage 1 is "`pnpm --filter @octogent/octoplan test` and `pnpm --filter…"). Done when each stage gets a short name (from the wave/decision it builds, or asked of Claude) and a test asserts no title ends in an ellipsis.
+- [ ] **Stages ignore the plan's own waves** — `buildStages` cuts the DoD list into ≤4 contiguous chunks, so v2 Stage 1 demands the full e2e:v2 screenshots before any feature exists and D41's three waves are lost. Done when a GOAL.md whose decisions define waves yields one stage per wave, with gate items in the last stage, covered by a test.
+- [ ] **Every stage lists nearly every decision** — `relevantDecisions` matches on any shared word, so v2 Stage 1 lists 38 of 43 decisions. Done when relevance uses the D-ids cited by the stage's goals/DoD (plus their depends-on), and a test on the v2 fixture lists ≤12 decisions per stage.

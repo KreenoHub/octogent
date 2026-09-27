@@ -63,7 +63,7 @@ describe("createGithubReader", () => {
       "pr",
       "list",
       "--json",
-      "number,title,headRefName,state,isDraft,url",
+      "number,title,headRefName,headRepositoryOwner,isCrossRepository,state,isDraft,url",
       "--state",
       "all",
       "--limit",

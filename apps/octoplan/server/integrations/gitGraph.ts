@@ -121,7 +121,7 @@ export const groupTentacleLanes = (branches: readonly GitBranchNode[]): Tentacle
     .map(([tentacleId, names]) => ({ tentacleId, branches: names.sort() }));
 };
 
-const pickBase = async (
+export const pickBase = async (
   exec: Exec,
   repoPath: string,
   refs: readonly RefRecord[],

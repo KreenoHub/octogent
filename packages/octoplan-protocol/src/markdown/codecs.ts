@@ -15,6 +15,12 @@ import {
   parkedItemSchema,
   riskSchema,
 } from "../domain";
+import {
+  type Convention,
+  type HarvestCandidate,
+  conventionSchema,
+  harvestCandidateSchema,
+} from "../v2";
 import { type MdRecord, type RecordCodec, getMeta, getMetaList, mergeMeta } from "./records";
 
 type Schema<T> = { safeParse: (value: unknown) => { success: true; data: T } | { success: false } };
@@ -164,3 +170,33 @@ export const coverageCodec: RecordCodec<CoverageDimension & { title?: string }> 
     body: item.note,
   }),
 };
+
+// ---------- v2 ----------
+
+/** H-records in docs/plan/HARVEST.md (D27). */
+export const harvestCodec = defineCodec<HarvestCandidate>(
+  harvestCandidateSchema,
+  (r) => ({
+    date: getMeta(r, "date"),
+    source: getMeta(r, "source") ?? "",
+    sourceKind: getMeta(r, "source-kind") ?? "commit",
+    status: getMeta(r, "status") ?? "pending",
+    decisionId: getMeta(r, "decision") || undefined,
+    contradicts: getMetaList(r, "contradicts"),
+  }),
+  (h) => [
+    ["date", h.date],
+    ["source", h.source],
+    ["source-kind", h.sourceKind],
+    ["status", h.status],
+    ["decision", h.decisionId],
+    ["contradicts", joinList(h.contradicts)],
+  ],
+);
+
+/** C-records in ~/.octoplan/CONVENTIONS.md (D28). */
+export const conventionCodec = defineCodec<Convention>(
+  conventionSchema,
+  (r) => ({ date: getMeta(r, "date") }),
+  (c) => [["date", c.date]],
+);

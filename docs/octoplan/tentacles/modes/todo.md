@@ -28,3 +28,7 @@ Planned in Octoplan (docs/plan/GOAL.md, DECISIONS.md D1–D43). Ids in brackets 
 - [ ] **Stage titles are truncated DoD text** — stages are titled after their first definition-of-done line cut at 60 chars (v2 Stage 1 is "`pnpm --filter @octogent/octoplan test` and `pnpm --filter…"). Done when each stage gets a short name (from the wave/decision it builds, or asked of Claude) and a test asserts no title ends in an ellipsis.
 - [ ] **Stages ignore the plan's own waves** — `buildStages` cuts the DoD list into ≤4 contiguous chunks, so v2 Stage 1 demands the full e2e:v2 screenshots before any feature exists and D41's three waves are lost. Done when a GOAL.md whose decisions define waves yields one stage per wave, with gate items in the last stage, covered by a test.
 - [ ] **Every stage lists nearly every decision** — `relevantDecisions` matches on any shared word, so v2 Stage 1 lists 38 of 43 decisions. Done when relevance uses the D-ids cited by the stage's goals/DoD (plus their depends-on), and a test on the v2 fixture lists ≤12 decisions per stage.
+
+### Wave 6 — handoff to Octogent (D44–D48)
+
+- [ ] [D45, D47] **Handoff prompts + transforms** — `buildHandoffPrompt`, `fallbackHandoff` (one tentacle per stage, existing tentacles reused), `normalizeHandoff` (slug ids, one-line Done-when todos, known D-ids, merged duplicates) and `buildOctopusPrompt`. Done when tests on the v2 plan fixture show the fallback yields one tentacle per stage with D-id stamps and the octopus prompt names every tentacle and wave.

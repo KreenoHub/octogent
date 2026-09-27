@@ -10,7 +10,7 @@ import {
 import { WebSocket, WebSocketServer } from "ws";
 import { TERMINAL_MESSAGES, attachTerminal } from "./bridge/popOut";
 import { createSessionManager } from "./bridge/sessionManager";
-import type { BridgeDeps } from "./bridge/types";
+import type { BridgeDeps, HeadlessRunner } from "./bridge/types";
 import { applyIdeaAction, buildStages } from "./modes";
 import { createPlanOps } from "./planOps";
 
@@ -65,6 +65,8 @@ export const startOctoplanServer = (options: {
   port: number;
   /** Real or fake Claude bridge dependencies; without them only hello/health work. */
   deps?: BridgeDeps;
+  /** v2: harvest + handoff passes (D31, D45); absent = those use their fallbacks/errors. */
+  headless?: HeadlessRunner;
 }): Promise<OctoplanServer> => {
   const httpServer = createServer(handleRequest);
   // Both sockets share the HTTP server: /ws carries planning events, /ws/terminal/<id> a PTY.
@@ -106,6 +108,9 @@ export const startOctoplanServer = (options: {
           buildStages,
           ...(options.deps.integrations ? { integrations: options.deps.integrations } : {}),
           ...(options.deps.ideaRegistry ? { ideaRegistry: options.deps.ideaRegistry } : {}),
+          ...(options.deps.conventions ? { conventions: options.deps.conventions } : {}),
+          ...(options.headless ? { headless: options.headless } : {}),
+          ...(options.deps.now ? { now: options.deps.now } : {}),
         })
       : null;
 
@@ -113,6 +118,7 @@ export const startOctoplanServer = (options: {
     if (event.type === "hello") {
       if (manager) await manager.replay((e) => send(socket, e));
       else send(socket, { type: "sessions", sessions: [] });
+      await planOps?.sendConventions((e) => send(socket, e));
       return;
     }
     if (!manager) {
@@ -123,6 +129,8 @@ export const startOctoplanServer = (options: {
       case "start-session":
         await manager.start(event);
         await planOps?.registerRepo(event.repoPath);
+        // D17: harvest on repo open, only when there are new commits (never blocks the session).
+        void planOps?.runHarvest(event.repoPath, { auto: true });
         return;
       case "send-message":
         manager.sendMessage(event.sessionId, event.text);
@@ -157,7 +165,32 @@ export const startOctoplanServer = (options: {
         await planOps?.generateStages(event.repoPath);
         return;
       case "export-tentacle":
-        await planOps?.exportTentacle(event.repoPath, event.tentacleId, event.tasks);
+        await planOps?.exportTentacle(event.repoPath, event.tentacleId, event.tasks, event.heading);
+        return;
+      // v2
+      case "request-overview":
+        await planOps?.requestOverview(event.repoPath, (e) => send(socket, e));
+        return;
+      case "run-harvest":
+        await planOps?.runHarvest(event.repoPath);
+        return;
+      case "resolve-harvest":
+        await planOps?.resolveHarvest(event.repoPath, event.harvestId, event.action);
+        return;
+      case "add-convention":
+        await planOps?.addConvention(event.title, event.body);
+        return;
+      case "remove-convention":
+        await planOps?.removeConvention(event.conventionId);
+        return;
+      case "generate-handoff":
+        await planOps?.generateHandoff(event.repoPath, event.heading);
+        return;
+      case "save-handoff":
+        await planOps?.saveHandoff(event.repoPath, event.plan);
+        return;
+      case "apply-handoff":
+        await planOps?.applyHandoff(event.repoPath);
         return;
       case "request-graph":
         await planOps?.requestGraph(event.repoPath, (e) => send(socket, e));
@@ -193,20 +226,31 @@ export const startOctoplanServer = (options: {
     });
   });
 
-  return new Promise((resolve, reject) => {
-    httpServer.once("error", reject);
-    httpServer.listen(options.port, options.host, () => {
-      const { port } = httpServer.address() as AddressInfo;
-      resolve({
-        port,
-        close: () =>
-          new Promise<void>((done) => {
-            void manager?.dispose();
-            for (const client of [...wss.clients, ...terminalWss.clients]) client.terminate();
-            terminalWss.close();
-            wss.close(() => httpServer.close(() => done()));
-          }),
-      });
-    });
-  });
+  // D29: bring back sessions from before a restart before anyone connects.
+  const restored = manager
+    ? manager.restore().catch((error) => {
+        console.warn(`[octoplan] could not restore sessions: ${String(error)}`);
+        return 0;
+      })
+    : Promise.resolve(0);
+
+  return restored.then(
+    () =>
+      new Promise((resolve, reject) => {
+        httpServer.once("error", reject);
+        httpServer.listen(options.port, options.host, () => {
+          const { port } = httpServer.address() as AddressInfo;
+          resolve({
+            port,
+            close: () =>
+              new Promise<void>((done) => {
+                void manager?.dispose();
+                for (const client of [...wss.clients, ...terminalWss.clients]) client.terminate();
+                terminalWss.close();
+                wss.close(() => httpServer.close(() => done()));
+              }),
+          });
+        });
+      }),
+  );
 };

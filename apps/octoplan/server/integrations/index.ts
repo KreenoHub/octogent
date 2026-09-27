@@ -37,5 +37,16 @@ export const createIntegrations: CreateIntegrations = ({ exec, now }) => {
         ...(gh.hint ? { hint: gh.hint } : {}),
       };
     },
+
+    // v2 contract stubs (D35): the integrations tentacle implements these.
+    resolveWorkspace: async (repoPath) => repoPath,
+    tentacleSummaries: () => notYet("tentacleSummaries"),
+    computeDrift: () => notYet("computeDrift"),
+    readHarvestInputs: () => notYet("readHarvestInputs"),
+    existingTentacles: () => notYet("existingTentacles"),
+    applyHandoff: () => notYet("applyHandoff"),
   };
 };
+
+const notYet = (name: string): Promise<never> =>
+  Promise.reject(new Error(`Not implemented yet: Integrations.${name}`));

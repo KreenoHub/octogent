@@ -447,3 +447,48 @@ The cockpit header shows aggregate tentacle todo progress (from D22), opens the 
 - depends-on: D5
 
 On question cards, each option's description is clamped to one line; the full text shows on hover or keyboard focus. UI-only, the prompt is unchanged.
+
+<!-- op:id=D44 -->
+## D44 — Plan → Octogent handoff is a click-through wizard
+- date: 2026-09-27
+- status: active
+- source: user request after the v2 interview
+- depends-on: D10, D33, D36
+
+A "Hand off to Octogent" button on the plan board opens four steps: Generate (Claude proposes the tentacles), Review (rename, add, remove tentacles; edit owned folders; edit, move or delete todos), Apply (create missing tentacles, write CONTEXT.md managed blocks and todos), Done (open Octogent's Deck, copy the octopus prompt). Regenerating replaces the draft; nothing is written to Octogent until Apply.
+
+<!-- op:id=D45 -->
+## D45 — Claude proposes the tentacle split in a headless pass
+- date: 2026-09-27
+- status: active
+- source: user request after the v2 interview
+- depends-on: D31, D44
+
+The proposal comes from one read-only Agent SDK query (the same runner as harvest, D31) that reads the repo layout, GOAL.md, DECISIONS.md, stages and any existing tentacles, and returns a handoff plan through a `plan_propose_handoff` tool: tentacles (id, name, description, owned folders, reuse-existing flag) and one-line todos with "Done when…" and D-id stamps, grouped by wave. Existing tentacles are reused when their folders match (D33). Without Claude, a fallback proposal splits the stages' tasks into one tentacle per stage.
+
+<!-- op:id=D46 -->
+## D46 — The handoff plan lives in docs/plan/HANDOFF.md
+- date: 2026-09-27
+- status: active
+- source: user request after the v2 interview
+- depends-on: D44
+
+The reviewed plan is saved as markdown (T-records per tentacle, with todos as checkbox lines) so it survives restarts, can be hand-edited and shows up in git. It records its status (draft/applied), the target Octogent workspace and the todo heading.
+
+<!-- op:id=D47 -->
+## D47 — The handoff includes an octopus coordinator prompt
+- date: 2026-09-27
+- status: active
+- source: user request after the v2 interview
+- depends-on: D12, D35, D44
+
+Apply writes docs/plan/OCTOPUS.md: a self-contained prompt for the coordinating Claude session (tentacles and their folders, waves in order, contracts-first, workers in disjoint folders, cite D-ids in commits). The Done step shows it with a copy button. Octoplan still doesn't start or steer workers (D12); spawning stays one click in Octogent.
+
+<!-- op:id=D48 -->
+## D48 — Export and handoff target the checkout Octogent runs in
+- date: 2026-09-27
+- status: active
+- source: dogfooding the v2 plan
+- depends-on: D36
+
+For a repo opened from a git worktree, the Octogent workspace is the main worktree (from `git rev-parse --git-common-dir`) when its `.octogent/` exists, otherwise the repo itself. Todos go under a heading chosen in the wizard (default: the plan title), with `### Wave n` subheadings.

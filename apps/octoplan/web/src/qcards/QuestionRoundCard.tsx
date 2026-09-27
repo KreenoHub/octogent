@@ -10,6 +10,11 @@ export type QuestionRoundCardProps = {
   answered?: readonly Answer[];
   onAnswer: (answers: Answer[]) => void;
   onRevise: (answer: Answer) => void;
+  /**
+   * v2 (D25): when answered, render one chip line per question ("header → answer" +
+   * modifier badge) until expanded. Default true; the stream's "expand all" passes false.
+   */
+  compact?: boolean;
 };
 
 export const QuestionRoundCard = ({

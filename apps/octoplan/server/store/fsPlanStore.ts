@@ -48,6 +48,12 @@ import {
   stageSchema,
   upsertItem,
 } from "@octogent/octoplan-protocol";
+import type {
+  HandoffPlan,
+  HarvestCandidate,
+  HistoryEvent,
+  SessionLogSummary,
+} from "@octogent/octoplan-protocol";
 import { FileWriter, readTextOrNull } from "./fsIo";
 import { INDEXED_FILES, PlanIndex, type PlanWarningListener, toCoverageState } from "./index";
 import {
@@ -61,6 +67,7 @@ import {
 import type {
   BranchInput,
   DecisionInput,
+  HarvestCandidateInput,
   PlanChangeListener,
   PlanStore,
   StartSessionLogInput,
@@ -68,6 +75,10 @@ import type {
 import { type PlanDirWatcher, watchPlanDir } from "./watcher";
 
 export type { PlanWarning, PlanWarningListener } from "./index";
+
+/** Contract stub (D35): throws until the store tentacle implements it. */
+const notYet = (name: string): Promise<never> =>
+  Promise.reject(new Error(`Not implemented yet: PlanStore.${name}`));
 
 export type FsPlanStoreOptions = {
   /** Broken records are skipped on read and reported here once each (default: console.warn). */
@@ -501,6 +512,42 @@ class FsPlanStore implements PlanStore {
       );
       return { doc: upsertItem(doc, branchCodec, branch), result: branch };
     });
+  }
+
+  // ---------- v2 (contract stubs; the store tentacle implements these) ----------
+
+  readHarvest(): Promise<HarvestCandidate[]> {
+    return notYet("readHarvest");
+  }
+  addHarvest(_inputs: readonly HarvestCandidateInput[]): Promise<HarvestCandidate[]> {
+    return notYet("addHarvest");
+  }
+  resolveHarvest(
+    _id: string,
+    _action: "accept" | "reject",
+  ): Promise<{ candidate: HarvestCandidate; decision?: Decision }> {
+    return notYet("resolveHarvest");
+  }
+  harvestMark(): Promise<string | null> {
+    return notYet("harvestMark");
+  }
+  setHarvestMark(_sha: string): Promise<void> {
+    return notYet("setHarvestMark");
+  }
+  readSessionLogs(): Promise<SessionLogSummary[]> {
+    return notYet("readSessionLogs");
+  }
+  readHistory(): Promise<HistoryEvent[]> {
+    return notYet("readHistory");
+  }
+  readHandoff(): Promise<HandoffPlan | null> {
+    return notYet("readHandoff");
+  }
+  writeHandoff(_plan: HandoffPlan): Promise<void> {
+    return notYet("writeHandoff");
+  }
+  writeOctopusPrompt(_markdown: string): Promise<void> {
+    return notYet("writeOctopusPrompt");
   }
 
   // ---------- change events ----------

@@ -31,3 +31,7 @@ Planned in Octoplan (docs/plan/GOAL.md, DECISIONS.md D1–D43). Ids in brackets 
 - [ ] [D42, D22] **Tentacles n/m header button** — the cockpit header shows aggregate todo progress, opens G on click, and pulses when the count changes. Done when a component test shows the counts from a fixture summary and a click opens the G overlay.
 - [ ] [D9, D13] **Board sections** — ideas, stages and conversation branches sections, plus a cross-session view of every session in the repo. Done when a component test with the store aggregate fixture renders all four.
 - [ ] [D24] **Drift badges + History tab** — each decision shows implemented / untouched / diverged; a History tab shows the timeline. Done when a component test renders all three badges and the timeline in date order.
+
+### Wave 6 — handoff to Octogent (D44–D48)
+
+- [ ] [D44] **Hand off to Octogent button** — the plan board shows "Hand off to Octogent" when GOAL.md exists and opens `HandoffSlot` in a modal; the header shows running plan jobs. Done when a component test opens the wizard from the board and closes it.

@@ -1,10 +1,12 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
+import { createHeadlessRunner } from "./bridge/headless";
 import { createNodePtyFactory } from "./bridge/pty";
 import { startOctoplanServer } from "./createServer";
 import { createIntegrations, createNodeExec } from "./integrations";
 import { applyCoverageUpdate, getMode } from "./modes";
 import { createFsPlanStore } from "./store/fsPlanStore";
 import { createIdeaRegistry } from "./store/ideaRegistry";
+import { createConventionsStore, createTranscriptStore } from "./store/userStores";
 
 export const DEFAULT_PORT = 8790;
 
@@ -37,9 +39,17 @@ startOctoplanServer({
     applyCoverageUpdate,
     // Wave 2: pop-out terminal, Octogent export + git graph, cross-project idea search.
     spawnPty: createNodePtyFactory(),
-    integrations: createIntegrations({ exec: createNodeExec() }),
+    integrations: createIntegrations({
+      exec: createNodeExec(),
+      ...(process.env.OCTOGENT_URL ? { octogentUrl: process.env.OCTOGENT_URL } : {}),
+    }),
     ideaRegistry: createIdeaRegistry(),
+    // v2: sessions survive restarts (D29), user conventions in the digest (D28).
+    transcripts: createTranscriptStore(),
+    conventions: createConventionsStore(),
   },
+  // v2: headless harvest (D31) and handoff proposal (D45) passes.
+  headless: createHeadlessRunner({ query }),
 })
   .then((server) => {
     console.log(`Octoplan server listening on http://${host}:${server.port}`);

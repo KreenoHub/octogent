@@ -13,6 +13,7 @@ In real use, all four v1 pain points came back: questions buried under reply pro
 - The G overlay answers 'what's going on across my tentacles' with pixel tentacle cards and opens from a visible header button (D21, D22, D23, D42)
 - The plan board shows a needs-attention list, ideas/stages/branches, a cross-session view, drift badges and a History tab (D9, D13, D24, D26)
 - Export preserves hand notes and stamps D-ids into todos; fork-PR badges are correct (D36, D37)
+- One click-through handoff turns the plan into Octogent tentacles, todos and an octopus prompt (D44, D45, D46, D47, D48)
 
 ## Non-goals
 
@@ -36,3 +37,5 @@ In real use, all four v1 pain points came back: questions buried under reply pro
 - [ ] e2e:v2 completes one live run each of Quick align, Brainstorm and Devil's advocate with every question arriving as a card <!-- op:id=DOD8 status=unknown -->
 - [ ] The cockpit header shows a 'Tentacles n/m' button whose counts match the checkboxes in .octogent/tentacles/*/todo.md, and clicking it opens G <!-- op:id=DOD9 status=unknown -->
 - [ ] After one week of real planning in Octoplan, the session files in docs/plan/sessions/ show the user's next project was planned there without falling back to terminal chat <!-- op:id=DOD10 status=unknown -->
+- [ ] In e2e:v2, Generate → Apply in the handoff wizard creates the proposed tentacles in the Octogent workspace, writes todos under the chosen heading with D-id stamps, writes docs/plan/HANDOFF.md and OCTOPUS.md, and leaves existing CONTEXT.md hand notes unchanged <!-- op:id=DOD11 status=unknown -->
+- [ ] Opening the wizard on a git worktree of a repo whose main checkout runs Octogent targets the main checkout's .octogent <!-- op:id=DOD12 status=unknown -->

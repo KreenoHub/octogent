@@ -30,3 +30,7 @@ Planned in Octoplan (docs/plan/GOAL.md, DECISIONS.md D1–D43). Ids in brackets 
 ### Dogfood fixes (found while planning v2 in Octoplan)
 
 - [ ] **Worktrees register as separate projects** — opening the octoplan-v2 worktree added it to ~/.octoplan/projects.json next to the main checkout, so the same repo's sessions split across two projects and the D13 cross-session view would miss half. Done when paths from one git common dir map to one project and a test registers a worktree without adding a second entry.
+
+### Wave 6 — handoff to Octogent (D44–D48)
+
+- [ ] [D46, D47] **HANDOFF.md + OCTOPUS.md** — `readHandoff`/`writeHandoff` round-trip docs/plan/HANDOFF.md (T-records per tentacle, todos as checkbox lines with D-ids and wave) and `writeOctopusPrompt` writes docs/plan/OCTOPUS.md; `snapshot().handoff` carries it. Done when a round-trip test with two tentacles and waved todos returns an identical plan and a hand edit to a todo line survives a re-read.

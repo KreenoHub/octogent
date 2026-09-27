@@ -9,6 +9,18 @@ import { NO_GOAL_MESSAGE, NO_INTEGRATIONS_MESSAGE, createPlanOps } from "../serv
 import { createFsPlanStore } from "../server/store/fsPlanStore";
 import type { IdeaRegistry, PlanStore } from "../server/store/types";
 
+/** v2 members a wave-2 test doesn't exercise. */
+const v2Unused: Omit<Integrations, "exportToTentacle" | "buildGraph"> = {
+  resolveWorkspace: async (repoPath) => repoPath,
+  tentacleSummaries: async () => [],
+  computeDrift: async () => [],
+  readHarvestInputs: async () => ({ headSha: null, commits: [], todos: [] }),
+  existingTentacles: async () => [],
+  applyHandoff: async () => {
+    throw new Error("unused");
+  },
+};
+
 const cleanups: Array<() => void> = [];
 afterEach(() => {
   for (const cleanup of cleanups.splice(0)) cleanup();
@@ -115,6 +127,7 @@ describe("plan ops", () => {
 
     const calls: unknown[] = [];
     const integrations: Integrations = {
+      ...v2Unused,
       exportToTentacle: async (input) => {
         calls.push(input);
         return { ok: true, message: "Exported 1 task" };
@@ -153,6 +166,7 @@ describe("plan ops", () => {
   it("builds the graph with the repo's conversation branches and links a branch", async () => {
     let seen: readonly ConversationBranch[] = [];
     const integrations: Integrations = {
+      ...v2Unused,
       exportToTentacle: async () => ({ ok: true, message: "" }),
       buildGraph: async (repoPath, branches) => {
         seen = branches;

@@ -12,8 +12,9 @@ import type {
   Idea,
   IdeaAction,
   QuestionRound,
+  TentacleSummary,
 } from "@octogent/octoplan-protocol";
-import { BranchGraph } from "../integrations";
+import { BranchGraph, HandoffWizard, TentacleCards } from "../integrations";
 import { QuestionRoundCard } from "../qcards";
 import { TerminalPanel } from "../terminal";
 import { BrainstormBoard } from "./brainstorm";
@@ -91,5 +92,34 @@ export type BrainstormSlotProps = {
 export const BrainstormSlot = (props: BrainstormSlotProps) => (
   <div data-testid="brainstorm-slot">
     <BrainstormBoard {...props} />
+  </div>
+);
+
+// ---------- v2 ----------
+
+/** Contract for integrations' `TentacleCards` (G overlay's first view, D21/D23). */
+export type TentacleCardsSlotProps = {
+  tentacles: readonly TentacleSummary[];
+  /** The Octogent workspace the cards were read from (D48). */
+  workspace: string | null;
+  loading: boolean;
+  onRefresh: () => void;
+};
+
+export const TentacleCardsSlot = (props: TentacleCardsSlotProps) => (
+  <div data-testid="tentacle-cards-slot">
+    <TentacleCards {...props} />
+  </div>
+);
+
+/**
+ * Contract for integrations' `HandoffWizard` (D44). The wizard reads its own state through
+ * useOctoplan (plan.handoff, jobsByRepo, handoffResultByRepo) and sends generate/save/apply.
+ */
+export type HandoffSlotProps = { repoPath: string; onClose: () => void };
+
+export const HandoffSlot = (props: HandoffSlotProps) => (
+  <div data-testid="handoff-slot">
+    <HandoffWizard {...props} />
   </div>
 );

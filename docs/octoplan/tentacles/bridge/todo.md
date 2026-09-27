@@ -24,3 +24,7 @@ Planned in Octoplan (docs/plan/GOAL.md, DECISIONS.md D1–D43). Ids in brackets 
 - [ ] [D16, D32, D34] **Session-start plan digest** — call `buildPlanDigest(snapshot, conventions)` and prepend it to the first user turn of every session on a repo with docs/plan. Done when a test on a fixture repo with DECISIONS.md shows the digest (≤60 lines) at the top of the logged first user turn.
 - [ ] [D18] **Decision recap every ~3 rounds** — append the same digest to every third answer turn. Done when a test answering 6 rounds sees the digest in exactly turns 3 and 6.
 - [ ] [D31, D27] **Headless harvest pass** — one read-only Agent SDK query (planning lockdown, v1 D30) over commits and todo diffs since the last harvest mark, writing H-records through a `plan_add_harvest` tool; skipped when there are no new commits. Done when a test with a fake SDK and a fixture git log produces H-records via the store and a second run with no new commits makes no SDK call.
+
+### Wave 6 — handoff to Octogent (D44–D48)
+
+- [ ] [D31, D45] **Headless runner** — `createHeadlessRunner({ query })`: one read-only query per call (planning lockdown, project settings only, bounded turns) exposing only `plan_add_harvest` or `plan_propose_handoff`, returning what Claude passed. Done when fake-SDK tests show each call gets only its tool plus read tools, returns the tool input, and an SDK error rejects.

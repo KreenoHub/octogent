@@ -664,6 +664,12 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
       }
     },
 
+    /**
+     * D29/D30: rebuild sessions from `deps.transcripts` after a server restart. Contract stub
+     * (D35); the bridge tentacle implements it. Returns how many sessions were restored.
+     */
+    restore: async (): Promise<number> => 0,
+
     dispose: async () => {
       for (const live of sessions.values()) {
         live.abort?.abort();

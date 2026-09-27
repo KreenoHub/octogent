@@ -48,7 +48,12 @@ export const OctoplanProvider = ({
   const [activeTransport] = useState(() => transport ?? createWebSocketTransport());
   const [state, dispatch] = useReducer(planClientReducer, initialPlanClientState);
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
-  const [chosenSessionId, setActiveSession] = useState<string | null>(null);
+  // `?session=<id>` preselects a session (bookmarks, links from other tools).
+  const [chosenSessionId, setActiveSession] = useState<string | null>(() =>
+    typeof window === "undefined"
+      ? null
+      : new URLSearchParams(window.location.search).get("session"),
+  );
 
   useEffect(
     () =>

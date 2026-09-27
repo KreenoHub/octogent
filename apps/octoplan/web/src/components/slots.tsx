@@ -13,7 +13,10 @@ import type {
   IdeaAction,
   QuestionRound,
 } from "@octogent/octoplan-protocol";
+import { BranchGraph } from "../integrations";
 import { QuestionRoundCard } from "../qcards";
+import { TerminalPanel } from "../terminal";
+import { BrainstormBoard } from "./brainstorm";
 import { CoverageMap } from "./coverage";
 
 export type QuestionRoundSlotProps = {
@@ -63,17 +66,9 @@ export type BranchGraphSlotProps = {
   onClose: () => void;
 };
 
-export const BranchGraphSlot = ({ graph, loading, onClose }: BranchGraphSlotProps) => (
-  <div className="op-slot" data-testid="branch-graph-slot">
-    <span className="op-slot-tag">BRANCH GRAPH · PLACEHOLDER</span>
-    <p className="op-empty">
-      {loading
-        ? "Loading…"
-        : `${graph?.commits.length ?? 0} commits, ${graph?.branches.length ?? 0} branches`}
-    </p>
-    <button type="button" className="op-button" onClick={onClose}>
-      Close
-    </button>
+export const BranchGraphSlot = (props: BranchGraphSlotProps) => (
+  <div data-testid="branch-graph-slot">
+    <BranchGraph {...props} />
   </div>
 );
 
@@ -81,11 +76,8 @@ export const BranchGraphSlot = ({ graph, loading, onClose }: BranchGraphSlotProp
 export type TerminalSlotProps = { sessionId: string; onClose: () => void };
 
 export const TerminalSlot = ({ sessionId, onClose }: TerminalSlotProps) => (
-  <div className="op-slot" data-testid="terminal-slot" data-session-id={sessionId}>
-    <span className="op-slot-tag">TERMINAL · PLACEHOLDER</span>
-    <button type="button" className="op-button" onClick={onClose}>
-      Close
-    </button>
+  <div data-testid="terminal-slot" data-session-id={sessionId}>
+    <TerminalPanel sessionId={sessionId} onClose={onClose} />
   </div>
 );
 
@@ -96,9 +88,8 @@ export type BrainstormSlotProps = {
   onConverge: () => void;
 };
 
-export const BrainstormSlot = ({ ideas }: BrainstormSlotProps) => (
-  <div className="op-slot" data-testid="brainstorm-slot">
-    <span className="op-slot-tag">BRAINSTORM BOARD · PLACEHOLDER</span>
-    <p className="op-empty">{ideas.length} ideas</p>
+export const BrainstormSlot = (props: BrainstormSlotProps) => (
+  <div data-testid="brainstorm-slot">
+    <BrainstormBoard {...props} />
   </div>
 );

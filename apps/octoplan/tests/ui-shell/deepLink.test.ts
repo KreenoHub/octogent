@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { initialOverlay } from "../../web/src/components/CockpitLayout";
+import { initialOverlay } from "../../web/src/app/overlays";
 
 describe("?focus=1 deep link", () => {
   it("opens focus mode only when asked", () => {

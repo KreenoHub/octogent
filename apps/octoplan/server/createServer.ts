@@ -11,6 +11,8 @@ import { WebSocket, WebSocketServer } from "ws";
 import { TERMINAL_MESSAGES, attachTerminal } from "./bridge/popOut";
 import { createSessionManager } from "./bridge/sessionManager";
 import type { BridgeDeps } from "./bridge/types";
+import { applyIdeaAction, buildStages } from "./modes";
+import { createPlanOps } from "./planOps";
 
 export const SERVER_VERSION = "0.0.0";
 export const WS_PATH = "/ws";
@@ -95,6 +97,17 @@ export const startOctoplanServer = (options: {
     for (const client of wss.clients) send(client, event);
   };
   const manager = options.deps ? createSessionManager(options.deps, broadcast) : null;
+  const planOps =
+    manager && options.deps
+      ? createPlanOps({
+          storeFor: manager.storeFor,
+          broadcast,
+          applyIdeaAction,
+          buildStages,
+          ...(options.deps.integrations ? { integrations: options.deps.integrations } : {}),
+          ...(options.deps.ideaRegistry ? { ideaRegistry: options.deps.ideaRegistry } : {}),
+        })
+      : null;
 
   const handle = async (socket: WebSocket, event: ClientEvent) => {
     if (event.type === "hello") {
@@ -109,6 +122,7 @@ export const startOctoplanServer = (options: {
     switch (event.type) {
       case "start-session":
         await manager.start(event);
+        await planOps?.registerRepo(event.repoPath);
         return;
       case "send-message":
         manager.sendMessage(event.sessionId, event.text);
@@ -123,7 +137,8 @@ export const startOctoplanServer = (options: {
         await manager.stop(event.sessionId);
         return;
       case "capture-idea":
-        await manager.captureIdea(event.repoPath, event.title);
+        await manager.captureIdea(event.repoPath, event.title, event.tags ?? []);
+        await planOps?.registerRepo(event.repoPath);
         return;
       case "branch-session":
         await manager.branch(event.sessionId, event.title, event.fromBlockId);
@@ -131,14 +146,24 @@ export const startOctoplanServer = (options: {
       case "converge":
         await manager.converge(event.sessionId);
         return;
-      // Wave-2 events other tentacles implement; the octopus wires them at merge.
+      // Plan operations that don't need a Claude session (planOps.ts).
       case "search-ideas":
+        await planOps?.searchIdeas(event.query, (e) => send(socket, e));
+        return;
       case "update-idea":
+        await planOps?.updateIdea(event.repoPath, event.ideaId, event.action, event.intoId);
+        return;
       case "generate-stages":
+        await planOps?.generateStages(event.repoPath);
+        return;
       case "export-tentacle":
+        await planOps?.exportTentacle(event.repoPath, event.tentacleId, event.tasks);
+        return;
       case "request-graph":
+        await planOps?.requestGraph(event.repoPath, (e) => send(socket, e));
+        return;
       case "link-branch":
-        send(socket, { type: "error", message: notWiredMessage(event.type) });
+        await planOps?.linkBranch(event.repoPath, event.branchId, event.gitBranch);
         return;
       default: {
         const unhandled: never = event;

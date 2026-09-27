@@ -15,11 +15,8 @@ import {
   terminalEnv,
 } from "../../server/bridge/popOut";
 import type { BridgeDeps } from "../../server/bridge/types";
-import {
-  type OctoplanServer,
-  notWiredMessage,
-  startOctoplanServer,
-} from "../../server/createServer";
+import { type OctoplanServer, startOctoplanServer } from "../../server/createServer";
+import { NO_INTEGRATIONS_MESSAGE } from "../../server/planOps";
 import { createFakePtyFactory, createFakeQuery, init, realDeps, tempRepo, until } from "./fakes";
 
 const CLAUDE_ID = "3f2a9c1e-5b7d-4e8f-9a0b-1c2d3e4f5a6b";
@@ -142,9 +139,11 @@ describe("pop-out terminal socket", () => {
   it("keeps /ws working next to the terminal channel", async () => {
     const { server, repo } = await startServer();
     const { socket, events } = await startSession(server, repo.dir, CLAUDE_ID);
+    // Any /ws round-trip proves the planning socket still answers; this server has no
+    // integrations, so request-graph replies with that explanation.
     socket.send(JSON.stringify({ type: "request-graph", repoPath: repo.dir }));
     await until(() =>
-      events.some((e) => e.type === "error" && e.message === notWiredMessage("request-graph")),
+      events.some((e) => e.type === "error" && e.message === NO_INTEGRATIONS_MESSAGE),
     );
   });
 

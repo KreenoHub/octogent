@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useGlobalHotkeys } from "../app/hotkeys";
+import { type Overlay, initialOverlay } from "../app/overlays";
 import { useOctoplan } from "../app/useOctoplan";
 import { BranchDialog } from "./BranchDialog";
 import { ConversationPane } from "./ConversationPane";
@@ -12,12 +13,6 @@ import { PlanBoard } from "./PlanBoard";
 import { SessionSidebar } from "./SessionSidebar";
 import { Toasts } from "./Toasts";
 import { TerminalSlot } from "./slots";
-
-type Overlay = "none" | "focus" | "new-session" | "idea" | "branch" | "graph" | "export";
-
-/** `?focus=1` opens focus mode on load: a bookmarkable "just answer questions" view. */
-export const initialOverlay = (search: string): Overlay =>
-  new URLSearchParams(search).get("focus") === "1" ? "focus" : "none";
 
 /** The red hotkey bar; keep it in sync with the useGlobalHotkeys map below. */
 export const HOTKEYS = [

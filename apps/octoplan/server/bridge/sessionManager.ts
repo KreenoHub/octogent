@@ -525,6 +525,10 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
         }
         // An ended or failed session is resumed from its Claude session id by liveInput.
         pushTurn(live, buildConvergeTurn(ideas));
+        // Starred ideas are now in Claude's hands as decisions; close them on the board.
+        for (const idea of ideas.filter((i) => i.status === "starred")) {
+          await live.store.updateIdea({ ...idea, status: "adopted" });
+        }
       } catch (error) {
         reportError(`Could not converge: ${errorText(error)}`, sessionId);
       }
@@ -614,20 +618,24 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
       }
     },
 
-    captureIdea: async (repoPath: string, title: string) => {
+    captureIdea: async (repoPath: string, title: string, tags: readonly string[] = []) => {
       const store = storeFor(resolve(repoPath));
       try {
-        await store.addIdea({
+        const idea = await store.addIdea({
           title,
           body: "",
-          tags: [],
+          tags: [...new Set(tags.map((tag) => tag.trim()).filter(Boolean))],
           date: now().toISOString().slice(0, 10),
           status: "inbox",
         });
+        broadcast({ type: "notice", message: `Captured ${idea.id}: ${idea.title}` });
       } catch (error) {
         reportError(`Could not capture idea: ${errorText(error)}`);
       }
     },
+
+    /** The per-repo store (cached, change events broadcast as `plan`), for server-side plan ops. */
+    storeFor: (repoPath: string) => storeFor(resolve(repoPath)),
 
     /** Everything a (re)connecting browser needs: sessions, their cards, rounds and plans. */
     replay: async (send: (event: ServerEvent) => void) => {

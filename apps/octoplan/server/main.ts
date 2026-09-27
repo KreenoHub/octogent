@@ -1,7 +1,10 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
+import { createNodePtyFactory } from "./bridge/pty";
 import { startOctoplanServer } from "./createServer";
+import { createIntegrations, createNodeExec } from "./integrations";
 import { applyCoverageUpdate, getMode } from "./modes";
 import { createFsPlanStore } from "./store/fsPlanStore";
+import { createIdeaRegistry } from "./store/ideaRegistry";
 
 export const DEFAULT_PORT = 8790;
 
@@ -32,6 +35,10 @@ startOctoplanServer({
       }),
     getMode,
     applyCoverageUpdate,
+    // Wave 2: pop-out terminal, Octogent export + git graph, cross-project idea search.
+    spawnPty: createNodePtyFactory(),
+    integrations: createIntegrations({ exec: createNodeExec() }),
+    ideaRegistry: createIdeaRegistry(),
   },
 })
   .then((server) => {

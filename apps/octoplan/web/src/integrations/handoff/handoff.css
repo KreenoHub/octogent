@@ -1,0 +1,432 @@
+/* Handoff wizard (D44): Octogent tokens, retro-pixel headings, same controls as the dialogs.
+   The shell's ModalFrame (HandoffDialog) supplies the title, border and backdrop. */
+
+.op-hw {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  max-height: calc(100vh - 8rem);
+  font-family: var(--font-main);
+  font-size: 0.8rem;
+  color: var(--text-primary);
+}
+
+.op-hw-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.op-hw-close {
+  margin-left: auto;
+}
+
+.op-hw-steps {
+  display: flex;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.op-hw-step {
+  font-family: var(--font-main);
+  font-size: 0.7rem;
+  letter-spacing: var(--control-letter-spacing);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+}
+
+.op-hw-step:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.op-hw-step:hover:not(:disabled),
+.op-hw-step:focus-visible {
+  outline: none;
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.op-hw-step--past {
+  color: var(--term-green);
+}
+
+.op-hw-step--current {
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  background: var(--control-bg-strong);
+}
+
+.op-hw-step-n {
+  font-family: "Silkscreen", cursive;
+}
+
+.op-hw-body {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+  min-height: 0;
+  overflow: auto;
+}
+
+.op-hw-lead {
+  margin: 0;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.op-hw-generate,
+.op-hw-apply,
+.op-hw-done,
+.op-hw-review {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.op-hw-failure {
+  margin: 0;
+  padding: 0.4rem 0.6rem;
+  color: var(--term-red);
+  border-left: 3px solid var(--term-red);
+}
+
+.op-hw-failure p {
+  margin: 0 0 0.4rem;
+}
+
+.op-hw-spinner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: var(--term-warning);
+  font-size: 0.75rem;
+}
+
+/* A pixel block that steps round a square, no smooth easing. */
+.op-hw-spinner-glyph {
+  width: 0.6rem;
+  height: 0.6rem;
+  background: var(--term-warning);
+  animation: op-hw-spin 0.8s steps(4) infinite;
+}
+
+@keyframes op-hw-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .op-hw-spinner-glyph {
+    animation: none;
+  }
+}
+
+.op-hw-meta {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.op-hw-workspace {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.op-hw-tentacles {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.op-hw-card {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--terminal-bg);
+  border: 1px solid var(--border-subtle);
+}
+
+.op-hw-card-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.op-hw-card-head .op-badge {
+  align-self: center;
+}
+
+.op-hw-grow {
+  flex: 1;
+  min-width: 10rem;
+}
+
+.op-hw-badge--new {
+  border-color: var(--term-green);
+  color: var(--term-green);
+}
+
+.op-hw-badge--warn {
+  border-color: var(--term-warning);
+  color: var(--term-warning);
+}
+
+.op-hw-label {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: var(--control-letter-spacing);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.op-hw-owns {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.op-hw-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.05rem 0.1rem 0.05rem 0.35rem;
+  border: 1px solid var(--term-blue);
+  color: var(--term-blue);
+  font-size: 0.72rem;
+}
+
+.op-hw-chip-x {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  padding: 0 0.2rem;
+  cursor: pointer;
+}
+
+.op-hw-chip-x:hover,
+.op-hw-chip-x:focus-visible {
+  outline: none;
+  color: var(--term-red);
+}
+
+.op-hw-own-input,
+.op-hw-move {
+  font-family: var(--font-main);
+  font-size: 0.72rem;
+  color: var(--text-primary);
+  background: var(--bg-surface-1);
+  border: 1px solid var(--border-subtle);
+  padding: 0.15rem 0.35rem;
+}
+
+.op-hw-own-input:focus,
+.op-hw-move:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.op-hw-small {
+  font-size: 0.66rem;
+  padding: 0.14rem 0.4rem;
+}
+
+.op-hw-wave {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: start;
+}
+
+.op-hw-wave-title {
+  margin: 0.2rem 0 0;
+  font-family: "Silkscreen", cursive;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--accent-primary);
+}
+
+.op-hw-todos {
+  display: grid;
+  gap: 0.4rem;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.op-hw-todo {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.op-hw-todo-text {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.op-hw-todo-text[aria-invalid="true"] {
+  border-color: var(--term-red);
+}
+
+.op-hw-todo-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.op-hw-did {
+  font-family: var(--font-main);
+  font-size: 0.66rem;
+  color: var(--term-blue);
+  background: transparent;
+  border: 1px solid var(--term-blue);
+  padding: 0 0.3rem;
+  cursor: pointer;
+}
+
+.op-hw-did[aria-pressed="true"],
+.op-hw-did:focus-visible {
+  outline: none;
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+.op-hw-decision {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  border-left: 3px solid var(--term-blue);
+  padding-left: 0.4rem;
+}
+
+.op-hw-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.op-hw-save {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.op-hw-save--saved {
+  color: var(--term-green);
+}
+
+.op-hw-save--pending {
+  color: var(--term-warning);
+}
+
+.op-hw-save--invalid {
+  color: var(--term-red);
+}
+
+.op-hw-nav {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.op-hw-summary {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.3rem 1rem;
+  margin: 0;
+}
+
+.op-hw-summary dt {
+  font-size: 0.7rem;
+  letter-spacing: var(--control-letter-spacing);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.op-hw-summary dd {
+  margin: 0;
+}
+
+.op-hw-results {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.op-hw-result {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.3rem 0.5rem;
+  border-left: 3px solid var(--term-green);
+  background: var(--terminal-bg);
+}
+
+.op-hw-result--fail {
+  border-left-color: var(--term-red);
+}
+
+.op-hw-result-msg {
+  color: var(--text-secondary);
+}
+
+.op-hw-result--fail .op-hw-result-msg {
+  color: var(--term-red);
+}
+
+.op-hw-deck {
+  justify-self: start;
+  text-decoration: none;
+}
+
+.op-hw-octopus {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.op-hw-octopus-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.op-hw-prompt {
+  max-height: 16rem;
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: 0.72rem;
+  color: var(--text-primary);
+  background: var(--terminal-bg);
+  border: 1px solid var(--border-subtle);
+}
+
+.op-hw-copy-note {
+  font-size: 0.72rem;
+  color: var(--term-green);
+}

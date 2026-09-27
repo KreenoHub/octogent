@@ -65,6 +65,20 @@ export const createPlanOps = (deps: PlanOpsDeps) => {
   const v2: PlanOpsV2Modes = { ...defaultV2, ...deps.v2Modes };
   /** One harvest per repo at a time (repo open + a manual click can overlap). */
   const harvesting = new Set<string>();
+  /**
+   * Handoff generate/save/apply run one at a time per repo, in arrival order, so an
+   * apply sent right after a save always sees the saved plan.
+   */
+  const handoffQueues = new Map<string, Promise<void>>();
+  const inHandoffQueue = (repoPath: string, task: () => Promise<void>): Promise<void> => {
+    const key = resolve(repoPath).toLowerCase();
+    const run = (handoffQueues.get(key) ?? Promise.resolve()).then(task, task);
+    handoffQueues.set(key, run);
+    void run.finally(() => {
+      if (handoffQueues.get(key) === run) handoffQueues.delete(key);
+    });
+    return run;
+  };
   /** Repos opened this run; the registry (when present) adds every repo ever registered. */
   const knownRepos = new Set<string>();
 
@@ -327,115 +341,127 @@ export const createPlanOps = (deps: PlanOpsDeps) => {
     },
 
     /** D44/D45: Claude proposes tentacles (fallback: one per stage); saved as a draft. */
-    generateHandoff: async (repoPath: string, heading?: string) => {
-      const path = resolve(repoPath);
-      const job = (state: "running" | "done" | "failed", message: string) =>
-        broadcast({ type: "plan-job", repoPath: path, job: "handoff-generate", state, message });
-      if (!deps.integrations) return fail(NO_INTEGRATIONS_MESSAGE);
-      try {
-        const store = deps.storeFor(path);
-        const snapshot = await store.snapshot();
-        if (!snapshot.goal) return fail(NO_GOAL_HANDOFF_MESSAGE);
-        job("running", "Claude is splitting the plan into tentacles…");
-        const [stages, existing, workspace, repoTree] = await Promise.all([
-          store.readStages(),
-          deps.integrations.existingTentacles(path).catch(() => []),
-          deps.integrations.resolveWorkspace(path),
-          listRepoTree(path),
-        ]);
-        const chosenHeading =
-          heading?.trim() || snapshot.handoff?.heading || snapshot.goal.title.trim() || "Plan";
-        const input = { snapshot, stages, existing, repoTree, heading: chosenHeading };
-        let source: HandoffPlan["source"] = "claude";
-        let proposed: HandoffTentacle[] = [];
-        if (deps.headless) {
-          try {
-            proposed = await deps.headless.proposeHandoff({
-              repoPath: path,
-              prompt: v2.buildHandoffPrompt(input),
-            });
-          } catch (error) {
-            notice(`Claude couldn't propose tentacles (${errorText(error)}); using the stages.`);
+    generateHandoff: (repoPath: string, heading?: string) =>
+      inHandoffQueue(repoPath, async () => {
+        const path = resolve(repoPath);
+        const job = (state: "running" | "done" | "failed", message: string) =>
+          broadcast({ type: "plan-job", repoPath: path, job: "handoff-generate", state, message });
+        if (!deps.integrations) return fail(NO_INTEGRATIONS_MESSAGE);
+        try {
+          const store = deps.storeFor(path);
+          const snapshot = await store.snapshot();
+          if (!snapshot.goal) return fail(NO_GOAL_HANDOFF_MESSAGE);
+          job("running", "Claude is splitting the plan into tentacles…");
+          const [stages, existing, workspace, repoTree] = await Promise.all([
+            store.readStages(),
+            deps.integrations.existingTentacles(path).catch(() => []),
+            deps.integrations.resolveWorkspace(path),
+            listRepoTree(path),
+          ]);
+          const chosenHeading =
+            heading?.trim() || snapshot.handoff?.heading || snapshot.goal.title.trim() || "Plan";
+          const input = { snapshot, stages, existing, repoTree, heading: chosenHeading };
+          let source: HandoffPlan["source"] = "claude";
+          let proposed: HandoffTentacle[] = [];
+          if (deps.headless) {
+            try {
+              proposed = await deps.headless.proposeHandoff({
+                repoPath: path,
+                prompt: v2.buildHandoffPrompt(input),
+              });
+            } catch (error) {
+              notice(`Claude couldn't propose tentacles (${errorText(error)}); using the stages.`);
+            }
           }
+          let tentacles = v2.normalizeHandoff(proposed, existing, snapshot.decisions);
+          if (tentacles.length === 0) {
+            source = "fallback";
+            tentacles = v2.normalizeHandoff(
+              v2.fallbackHandoff(input),
+              existing,
+              snapshot.decisions,
+            );
+          }
+          const draft: Omit<HandoffPlan, "octopusPrompt"> = {
+            status: "draft",
+            generatedAt: now().toISOString(),
+            source,
+            workspace,
+            heading: chosenHeading,
+            tentacles,
+          };
+          await store.writeHandoff({
+            ...draft,
+            octopusPrompt: v2.buildOctopusPrompt({
+              plan: draft,
+              goal: snapshot.goal,
+              decisions: snapshot.decisions,
+            }),
+          });
+          job("done", `Proposed ${tentacles.length} tentacle${tentacles.length === 1 ? "" : "s"}.`);
+        } catch (error) {
+          job("failed", `Could not generate the handoff: ${errorText(error)}`);
         }
-        let tentacles = v2.normalizeHandoff(proposed, existing, snapshot.decisions);
-        if (tentacles.length === 0) {
-          source = "fallback";
-          tentacles = v2.normalizeHandoff(v2.fallbackHandoff(input), existing, snapshot.decisions);
-        }
-        const draft: Omit<HandoffPlan, "octopusPrompt"> = {
-          status: "draft",
-          generatedAt: now().toISOString(),
-          source,
-          workspace,
-          heading: chosenHeading,
-          tentacles,
-        };
-        await store.writeHandoff({
-          ...draft,
-          octopusPrompt: v2.buildOctopusPrompt({
-            plan: draft,
-            goal: snapshot.goal,
-            decisions: snapshot.decisions,
-          }),
-        });
-        job("done", `Proposed ${tentacles.length} tentacle${tentacles.length === 1 ? "" : "s"}.`);
-      } catch (error) {
-        job("failed", `Could not generate the handoff: ${errorText(error)}`);
-      }
-    },
+      }),
 
     /** Wizard edits: re-render the octopus prompt from the edited tentacles and save. */
-    saveHandoff: async (repoPath: string, plan: HandoffPlan) => {
-      try {
-        const store = deps.storeFor(repoPath);
-        const { goal, decisions } = await store.snapshot();
-        const { octopusPrompt: _old, ...rest } = plan;
-        const tentacles = v2.normalizeHandoff(
-          plan.tentacles,
-          deps.integrations
-            ? await deps.integrations.existingTentacles(repoPath).catch(() => [])
-            : [],
-          decisions,
-        );
-        const draft = { ...rest, tentacles, status: "draft" as const };
-        await store.writeHandoff({
-          ...draft,
-          octopusPrompt: v2.buildOctopusPrompt({ plan: draft, goal, decisions }),
-        });
-      } catch (error) {
-        fail(`Could not save the handoff: ${errorText(error)}`);
-      }
-    },
+    saveHandoff: (repoPath: string, plan: HandoffPlan) =>
+      inHandoffQueue(repoPath, async () => {
+        try {
+          const store = deps.storeFor(repoPath);
+          const { goal, decisions } = await store.snapshot();
+          const { octopusPrompt: _old, ...rest } = plan;
+          const tentacles = v2.normalizeHandoff(
+            plan.tentacles,
+            deps.integrations
+              ? await deps.integrations.existingTentacles(repoPath).catch(() => [])
+              : [],
+            decisions,
+          );
+          const draft = { ...rest, tentacles, status: "draft" as const };
+          await store.writeHandoff({
+            ...draft,
+            octopusPrompt: v2.buildOctopusPrompt({ plan: draft, goal, decisions }),
+          });
+        } catch (error) {
+          fail(`Could not save the handoff: ${errorText(error)}`);
+        }
+      }),
 
     /** D44/D47/D48: write tentacles + todos into Octogent, then OCTOPUS.md. */
-    applyHandoff: async (repoPath: string) => {
-      const path = resolve(repoPath);
-      const job = (state: "running" | "done" | "failed", message: string) =>
-        broadcast({ type: "plan-job", repoPath: path, job: "handoff-apply", state, message });
-      if (!deps.integrations) return fail(NO_INTEGRATIONS_MESSAGE);
-      try {
-        const store = deps.storeFor(path);
-        const snapshot = await store.snapshot();
-        const plan = snapshot.handoff ?? (await store.readHandoff());
-        if (!plan) return fail("Generate a handoff first.");
-        job("running", `Writing ${plan.tentacles.length} tentacles to ${plan.workspace}…`);
-        const result = await deps.integrations.applyHandoff({
-          repoPath: path,
-          plan,
-          goal: snapshot.goal,
-          decisions: snapshot.decisions.filter((d) => d.status === "active"),
-        });
-        if (result.tentacles.some((t) => t.ok)) {
-          await store.writeOctopusPrompt(plan.octopusPrompt);
-          await store.writeHandoff({ ...plan, status: "applied", appliedAt: now().toISOString() });
+    applyHandoff: (repoPath: string) =>
+      inHandoffQueue(repoPath, async () => {
+        const path = resolve(repoPath);
+        const job = (state: "running" | "done" | "failed", message: string) =>
+          broadcast({ type: "plan-job", repoPath: path, job: "handoff-apply", state, message });
+        if (!deps.integrations) return fail(NO_INTEGRATIONS_MESSAGE);
+        try {
+          const store = deps.storeFor(path);
+          const snapshot = await store.snapshot();
+          // Read from disk: a save queued just before this apply has already written it.
+          const plan = (await store.readHandoff()) ?? snapshot.handoff ?? null;
+          if (!plan) return fail("Generate a handoff first.");
+          job("running", `Writing ${plan.tentacles.length} tentacles to ${plan.workspace}…`);
+          const result = await deps.integrations.applyHandoff({
+            repoPath: path,
+            plan,
+            goal: snapshot.goal,
+            decisions: snapshot.decisions.filter((d) => d.status === "active"),
+          });
+          if (result.tentacles.some((t) => t.ok)) {
+            await store.writeOctopusPrompt(plan.octopusPrompt);
+            await store.writeHandoff({
+              ...plan,
+              status: "applied",
+              appliedAt: now().toISOString(),
+            });
+          }
+          broadcast({ type: "handoff-result", repoPath: path, result });
+          job(result.ok ? "done" : "failed", result.message);
+        } catch (error) {
+          job("failed", `Could not apply the handoff: ${errorText(error)}`);
         }
-        broadcast({ type: "handoff-result", repoPath: path, result });
-        job(result.ok ? "done" : "failed", result.message);
-      } catch (error) {
-        job("failed", `Could not apply the handoff: ${errorText(error)}`);
-      }
-    },
+      }),
   };
 };
 

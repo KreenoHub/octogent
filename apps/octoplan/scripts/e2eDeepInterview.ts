@@ -186,7 +186,7 @@ socket.on("message", (raw) => {
         const heading = event.block.heading;
         if (
           revisedQuestionId &&
-          new RegExp(`revision\\s+${revisedQuestionId}\\b`, "i").test(heading)
+          new RegExp(`revision\\b.{0,8}\\b${revisedQuestionId}\\b`, "i").test(heading)
         ) {
           revisionAcknowledged = true;
           log(`Claude answered the revision: "## ${heading}"`);

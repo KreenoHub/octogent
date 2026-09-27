@@ -26,6 +26,9 @@ describe("mode system prompts", () => {
     expect(prompt).toContain(REVISION_MARKER);
     expect(prompt).toContain("questionIds");
     expect(prompt).toContain("regress");
+    // Live run 2 showed Claude skipping the visible revision card when it kept asking.
+    expect(prompt).toContain("before your next AskUserQuestion");
+    expect(prompt).toMatch(/Revision Q<n>.*always required/s);
   });
 
   it.each(MODE_IDS)("%s names every plan tool it needs", (id) => {

@@ -188,8 +188,13 @@ socket.on("message", (raw) => {
           revisedQuestionId &&
           new RegExp(`revision\\b.{0,8}\\b${revisedQuestionId}\\b`, "i").test(heading)
         ) {
-          revisionAcknowledged = true;
-          log(`Claude answered the revision: "## ${heading}"`);
+          // The card (Claude's own, or the bridge's built from docs/plan) must show a real
+          // re-check: a replacement ("D1 → D8") or a re-confirmation, not "still stale".
+          const rechecked = /D\d+\s*→\s*D\d+|re-confirmed|unchanged/i.test(event.block.markdown);
+          if (rechecked) revisionAcknowledged = true;
+          log(
+            `revision card "${heading}": ${event.block.markdown.replace(/\s+/g, " ").slice(0, 160)}`,
+          );
         }
       }
       if (event.block.kind === "tool") toolBlocks++;

@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import type { Options, PermissionResult, SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import {
   type Answer,
+  type Decision,
   type MessageBlock,
   type ModeId,
   type Question,
@@ -40,6 +41,37 @@ type LiveSession = {
   questionCount: number;
   blockCount: number;
   summaryWritten: boolean;
+  /** Set by a revision; turned into a visible card at Claude's next round or turn end. */
+  pendingRevision: { questionId: string; staleIds: string[] } | null;
+};
+
+export const isRevisionHeading = (heading: string, questionId: string) =>
+  new RegExp(`revision\\b.{0,8}\\b${questionId}\\b`, "i").test(heading);
+
+/**
+ * What a revision did, read from docs/plan rather than trusted from Claude's prose:
+ * each decision that depended on the revised answer is replaced, re-confirmed, or
+ * still waiting to be re-checked.
+ */
+export const revisionCardMarkdown = (
+  questionId: string,
+  staleIds: readonly string[],
+  decisions: readonly Decision[],
+) => {
+  if (staleIds.length === 0) {
+    return `No recorded decisions depended on ${questionId}, so nothing needed re-checking.`;
+  }
+  const lines = staleIds.map((id) => {
+    const replacements = decisions.filter(
+      (d) => d.status === "active" && d.id !== id && d.dependsOn.includes(id),
+    );
+    if (replacements.length > 0) {
+      return `- ${id} → ${replacements.map((d) => `${d.id} ${d.title}`).join(", ")}`;
+    }
+    if (decisions.find((d) => d.id === id)?.status === "active") return `- ${id}: re-confirmed`;
+    return `- ${id}: still stale, not re-checked yet`;
+  });
+  return [`What your change to ${questionId} did, from docs/plan:`, "", ...lines].join("\n");
 };
 
 /** Claude's closing `## Summary` reply section (the mode prompts end with one). */
@@ -95,6 +127,24 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
   };
   const blockId = (live: LiveSession) => `${live.session.id}-b${++live.blockCount}`;
 
+  const flushRevisionCard = async (live: LiveSession) => {
+    const pending = live.pendingRevision;
+    if (!pending) return;
+    live.pendingRevision = null;
+    try {
+      const { decisions } = await live.store.snapshot();
+      addBlock(live, {
+        kind: "section",
+        id: blockId(live),
+        heading: `Revision ${pending.questionId}`,
+        markdown: revisionCardMarkdown(pending.questionId, pending.staleIds, decisions),
+        at: now().toISOString(),
+      });
+    } catch (error) {
+      reportError(`Could not summarize the revision: ${errorText(error)}`, live.session.id);
+    }
+  };
+
   const toRound = (live: LiveSession, input: Record<string, unknown>): QuestionRound | null => {
     const raw = Array.isArray(input.questions)
       ? (input.questions as Record<string, unknown>[])
@@ -136,6 +186,7 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
       { signal }: { signal: AbortSignal },
     ): Promise<PermissionResult> => {
       if (toolName === "AskUserQuestion") {
+        await flushRevisionCard(live);
         const round = toRound(live, input);
         if (!round) return { behavior: "deny", message: INVALID_ROUND_MESSAGE };
         live.rounds.push(round);
@@ -192,6 +243,13 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
               markdown: section.markdown,
               at: now().toISOString(),
             });
+            if (
+              live.pendingRevision &&
+              isRevisionHeading(section.heading, live.pendingRevision.questionId)
+            ) {
+              // Claude wrote its own revision card; don't add a second one.
+              live.pendingRevision = null;
+            }
             if (isSummaryHeading(section.heading) && section.markdown) {
               live.summaryWritten = true;
               await live.store
@@ -213,6 +271,7 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
       return;
     }
     if (message.type === "result") {
+      await flushRevisionCard(live);
       if (message.subtype !== "success") {
         reportError(`Claude stopped: ${message.subtype}`, live.session.id);
       }
@@ -331,6 +390,7 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
         questionCount: 0,
         blockCount: 0,
         summaryWritten: false,
+        pendingRevision: null,
       };
       sessions.set(live.session.id, live);
       broadcast({ type: "session-updated", session: live.session });
@@ -398,6 +458,7 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
         const dependents = await live.store.dependentDecisions(questionId);
         const dependentIds = dependents.map((d) => d.id);
         await live.store.markDecisionsStale(dependentIds);
+        live.pendingRevision = { questionId, staleIds: dependentIds };
         await live.store.recordAnswers(sessionId, round, [revision]);
         const history = [...(live.answers.get(round.id) ?? []), revision];
         live.answers.set(round.id, history);

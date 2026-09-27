@@ -8,6 +8,7 @@ import {
   type SessionManager,
   createSessionManager,
   fallbackSummary,
+  revisionCardMarkdown,
 } from "../../server/bridge/sessionManager";
 import { PLANNING_BUILTIN_TOOLS, PLANNING_DENY_MESSAGE } from "../../server/bridge/toolPolicy";
 import { createFsPlanStore } from "../../server/store/fsPlanStore";
@@ -60,6 +61,45 @@ const isType =
   <K extends ServerEvent["type"]>(type: K) =>
   (event: ServerEvent): event is Extract<ServerEvent, { type: K }> =>
     event.type === type;
+
+describe("revision card", () => {
+  const decision = (id: string, status: "active" | "stale", dependsOn: string[] = []) => ({
+    id,
+    title: `Title ${id}`,
+    date: "2026-09-27",
+    status,
+    source: "test",
+    questionIds: ["Q1"],
+    dependsOn,
+    body: "",
+  });
+
+  it("says what each dependent decision became", () => {
+    const markdown = revisionCardMarkdown(
+      "Q1",
+      ["D1", "D2", "D3"],
+      [
+        decision("D1", "stale"),
+        decision("D2", "active"),
+        decision("D3", "stale"),
+        decision("D4", "active", ["D1"]),
+      ],
+    );
+    expect(markdown).toBe(
+      [
+        "What your change to Q1 did, from docs/plan:",
+        "",
+        "- D1 → D4 Title D4",
+        "- D2: re-confirmed",
+        "- D3: still stale, not re-checked yet",
+      ].join("\n"),
+    );
+  });
+
+  it("says so when nothing depended on the answer", () => {
+    expect(revisionCardMarkdown("Q7", [], [])).toContain("No recorded decisions depended on Q7");
+  });
+});
 
 describe("session manager", () => {
   it("runs a full round: kickoff, sections, question round, encoded answers, idle", async () => {
@@ -237,6 +277,71 @@ describe("session manager", () => {
     // Stopping later keeps Claude's summary instead of overwriting it with the fallback.
     await manager.stop(session?.id ?? "");
     expect(readSessionLog(repo.dir).summary).toBe("- Goal: tiny habit CLI\n- Decisions: D1, D2");
+  });
+
+  it("posts a revision card from docs/plan at Claude's next round", async () => {
+    let repoDir = "";
+    const { repo, log, manager } = setup(async function* ({ next, askTool }) {
+      await next();
+      yield init("claude-7");
+      await askTool("AskUserQuestion", roundInput);
+      yield result();
+      await next(); // REVISION turn: Claude replaces D1 silently, then asks again.
+      await createFsPlanStore(repoDir).upsertDecision({
+        title: "Small team edition",
+        body: "Replaces D1 after the change to Q1.",
+        source: "test",
+        questionIds: ["Q1"],
+        dependsOn: ["D1"],
+      });
+      await askTool("AskUserQuestion", roundInput);
+    });
+    repoDir = repo.dir;
+    await manager.start({ repoPath: repo.dir, mode: "deep-interview", topic: "t" });
+    const { round } = await log.waitFor(isType("question-round"));
+    await manager.answerRound(round.sessionId, round.id, [
+      answer("Q1", "Just me (Recommended)"),
+      answer("Q2", "Tiny (Recommended)"),
+    ]);
+    await createFsPlanStore(repo.dir).upsertDecision({
+      title: "Single-user app",
+      body: "Only one user.",
+      source: "test",
+      questionIds: ["Q1"],
+      dependsOn: [],
+    });
+    await manager.reviseAnswer(round.sessionId, answer("Q1", "A small team", { revisionOf: "Q1" }));
+
+    await until(() => log.events.filter(isType("question-round")).length === 2);
+    const card = log.events
+      .filter(isType("block"))
+      .map((e) => e.block)
+      .find((b) => b.kind === "section" && b.heading === "Revision Q1");
+    expect(card?.kind === "section" ? card.markdown : "").toContain("- D1 → D2 Small team edition");
+  });
+
+  it("does not add a second revision card when Claude writes its own", async () => {
+    const { repo, log, manager } = setup(async function* ({ next, askTool }) {
+      await next();
+      yield init("claude-8");
+      await askTool("AskUserQuestion", roundInput);
+      yield result();
+      await next();
+      yield assistantText("## Revision Q1\n- D1: unchanged");
+      await askTool("AskUserQuestion", roundInput);
+    });
+    await manager.start({ repoPath: repo.dir, mode: "deep-interview", topic: "t" });
+    const { round } = await log.waitFor(isType("question-round"));
+    await manager.answerRound(round.sessionId, round.id, [
+      answer("Q1", "Just me (Recommended)"),
+      answer("Q2", "Tiny (Recommended)"),
+    ]);
+    await manager.reviseAnswer(round.sessionId, answer("Q1", "A small team", { revisionOf: "Q1" }));
+    await until(() => log.events.filter(isType("question-round")).length === 2);
+    const cards = log.events
+      .filter(isType("block"))
+      .filter((e) => e.block.kind === "section" && e.block.heading === "Revision Q1");
+    expect(cards).toHaveLength(1);
   });
 
   it("replays sessions, cards, pending rounds and plans to a reconnecting client", async () => {

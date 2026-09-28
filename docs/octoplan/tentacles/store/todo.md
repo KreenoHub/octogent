@@ -8,3 +8,25 @@
 ## Wave 2
 
 - [x] **Idea inbox across projects** — `IDEAS.md` per repo plus a small registry of known repos in `~/.octoplan/projects.json` (paths only; content stays in the repos). `searchIdeas(query)` scans all registered repos' IDEAS.md with case-insensitive matching on title, tags and body. Done when a test with two temp repos finds ideas in both and survives one repo being deleted.
+
+## v2
+
+Planned in Octoplan (docs/plan/GOAL.md, DECISIONS.md D1–D43). Ids in brackets are the decisions each task implements; cite them in commit messages (D26).
+
+### Wave 3 — focus (D41)
+
+- [ ] [D29, D30] **Replayable session log** — store enough in docs/plan/sessions (plus a block log if needed) to rebuild cards, pending rounds and claudeSessionId after a restart. Done when a round-trip test writes a session with one answered and one pending round, reloads it, and gets identical blocks and the pending round back.
+
+### Wave 4 — memory (D41)
+
+- [ ] [D27] **HARVEST.md H-records** — read/write `docs/plan/HARVEST.md` in the shared record format with source (sha or todo diff), status pending/accepted/rejected, and the resulting D id; accepting creates the D-record, rejected titles never reappear. Done when round-trip tests cover all three statuses and accept writes a new D-record linked from the H-record.
+- [ ] [D28] **User conventions store** — C-records in `~/.octoplan/CONVENTIONS.md` (next to projects.json), exposed on the snapshot for the digest. Done when a test with a temp home dir writes, reads and lists C-records without touching any repo.
+
+### Wave 5 — overview (D41)
+
+- [ ] [D13, D9] **Cross-session aggregate** — expose every session in the repo (open questions, parked, tentative, stale) as one snapshot the board can render. Done when a fixture with two sessions yields one aggregate with both sessions' unanswered rounds and parked items.
+- [ ] [D24] **History timeline** — build the History timeline type (decisions, revisions, branches with dates and session ids) from session logs and DECISIONS.md. Done when a fixture test returns events in date order including one revision and one conversation branch.
+
+### Dogfood fixes (found while planning v2 in Octoplan)
+
+- [ ] **Worktrees register as separate projects** — opening the octoplan-v2 worktree added it to ~/.octoplan/projects.json next to the main checkout, so the same repo's sessions split across two projects and the D13 cross-session view would miss half. Done when paths from one git common dir map to one project and a test registers a worktree without adding a second entry.

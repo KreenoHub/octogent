@@ -20,5 +20,5 @@ export const useRoundActions = (sessionId: string | null) => {
   return { answerRound, reviseAnswer };
 };
 
-/** DOM id of a round's inline card, used by the Unanswered tray to jump to it. */
+/** DOM id of a round's place in the stream (stub while pending, answered card after). */
 export const roundAnchorId = (roundId: string) => `op-round-${roundId}`;

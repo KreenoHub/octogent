@@ -2,12 +2,16 @@ import type {
   Answer,
   Decision,
   GitGraph,
+  HarvestCandidate,
   Idea,
   MessageBlock,
+  Overview,
   PlanSnapshot,
   QuestionRound,
   Session,
+  SessionLogSummary,
   Stage,
+  TentacleSummary,
 } from "@octogent/octoplan-protocol";
 
 export const session = (overrides: Partial<Session> = {}): Session => ({
@@ -119,3 +123,102 @@ export const graph = (overrides: Partial<GitGraph> = {}): GitGraph => ({
   ghAvailable: false,
   ...overrides,
 });
+
+// ---------- v2 ----------
+
+export const toolBlock = (id: string, name: string, summary = name): MessageBlock => ({
+  kind: "tool",
+  id,
+  name,
+  summary,
+  at: "2026-09-25T10:00:40Z",
+});
+
+export const harvest = (overrides: Partial<HarvestCandidate> = {}): HarvestCandidate => ({
+  id: "H1",
+  title: "Use pnpm workspaces",
+  date: "2026-09-26",
+  source: "abc1234def",
+  sourceKind: "commit",
+  status: "pending",
+  contradicts: [],
+  body: "Seen in feat: workspace split",
+  ...overrides,
+});
+
+export const sessionLog = (overrides: Partial<SessionLogSummary> = {}): SessionLogSummary => ({
+  file: "2026-09-25-plan-octoplan.md",
+  title: "Plan Octoplan",
+  mode: "deep-interview",
+  startedAt: "2026-09-25T10:00:00Z",
+  summary: "Settled the cockpit layout.",
+  answers: 12,
+  parked: 1,
+  tentative: 2,
+  revisions: 0,
+  ...overrides,
+});
+
+export const tentacle = (overrides: Partial<TentacleSummary> = {}): TentacleSummary => ({
+  tentacleId: "ui-shell",
+  name: "Octoplan UI Shell",
+  description: "The cockpit",
+  done: 3,
+  total: 8,
+  branches: [],
+  ahead: 0,
+  behind: 0,
+  ...overrides,
+});
+
+export const overview = (overrides: Partial<Overview> = {}): Overview => ({
+  repoPath: "C:\\repos\\alpha",
+  workspace: "C:\\repos\\alpha",
+  tentacles: [tentacle(), tentacle({ tentacleId: "qcards", name: "QCards", done: 2, total: 4 })],
+  drift: [],
+  history: [],
+  ...overrides,
+});
+
+/** A repo aggregate as the store sends it: every v2 board source filled once. */
+export const aggregatePlan = (overrides: Partial<PlanSnapshot> = {}): PlanSnapshot =>
+  plan({
+    decisions: [
+      decision({ id: "D1", title: "Cockpit by default" }),
+      decision({ id: "D2", title: "Dark only", status: "stale" }),
+      decision({ id: "D3", title: "Keyboard first" }),
+    ],
+    risks: [
+      {
+        id: "R1",
+        title: "Solo dev only",
+        likelihood: "medium",
+        impact: "medium",
+        origin: "Q1 tentative",
+        status: "open",
+        body: "",
+      },
+      {
+        id: "R2",
+        title: "SDK churn",
+        likelihood: "medium",
+        impact: "high",
+        origin: "Q4",
+        status: "open",
+        body: "",
+      },
+    ],
+    ideas: [idea(), idea({ id: "I2", title: "Voice answers", status: "starred" })],
+    harvest: [harvest(), harvest({ id: "H2", title: "Old one", status: "accepted" })],
+    sessionLogs: [
+      sessionLog(),
+      sessionLog({
+        file: "2026-09-26-pricing.md",
+        title: "Pricing",
+        mode: "quick-align",
+        startedAt: "2026-09-26T09:00:00Z",
+      }),
+    ],
+    goal: { title: "Alpha", why: "", goals: ["Ship v2"], nonGoals: [], done: [] },
+    ...overrides,
+  });

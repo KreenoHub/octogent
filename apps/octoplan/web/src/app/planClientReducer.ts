@@ -1,8 +1,11 @@
 import type {
   Answer,
+  Convention,
   GitGraph,
+  HandoffResult,
   IdeaSearchResult,
   MessageBlock,
+  Overview,
   PlanSnapshot,
   QuestionRound,
   ServerEvent,
@@ -32,6 +35,13 @@ export type ExportResult = {
   message: string;
 };
 
+/** v2: a long-running plan job (harvest, handoff generate/apply) for one repo. */
+export type PlanJob = {
+  job: "harvest" | "handoff-generate" | "handoff-apply";
+  state: "running" | "done" | "failed";
+  message: string;
+};
+
 /** Client-only actions the store folds in next to server events. */
 export type LocalAction = { type: "local/graph-requested"; repoPath: string };
 
@@ -58,6 +68,12 @@ export type PlanClientState = {
   graphByRepo: Record<string, GitGraph>;
   /** True between a `request-graph` send and its `graph` reply (or any server error). */
   graphLoadingByRepo: Record<string, boolean>;
+  // v2
+  overviewByRepo: Record<string, Overview>;
+  conventions: Convention[];
+  /** Latest state per job kind, keyed by repo then job. */
+  jobsByRepo: Record<string, Partial<Record<PlanJob["job"], PlanJob>>>;
+  handoffResultByRepo: Record<string, HandoffResult>;
 };
 
 export const MAX_ERRORS = 20;
@@ -79,6 +95,10 @@ export const initialPlanClientState: PlanClientState = {
   exportResults: [],
   graphByRepo: {},
   graphLoadingByRepo: {},
+  overviewByRepo: {},
+  conventions: [],
+  jobsByRepo: {},
+  handoffResultByRepo: {},
 };
 
 const upsertById = <T extends { id: string }>(items: T[], item: T): T[] => {
@@ -188,6 +208,26 @@ export const planClientReducer = (
         graphLoadingByRepo,
       };
     }
+    case "overview":
+      return {
+        ...state,
+        overviewByRepo: { ...state.overviewByRepo, [event.overview.repoPath]: event.overview },
+      };
+    case "conventions":
+      return { ...state, conventions: event.conventions };
+    case "plan-job": {
+      const jobs = state.jobsByRepo[event.repoPath] ?? {};
+      const job: PlanJob = { job: event.job, state: event.state, message: event.message };
+      return {
+        ...state,
+        jobsByRepo: { ...state.jobsByRepo, [event.repoPath]: { ...jobs, [event.job]: job } },
+      };
+    }
+    case "handoff-result":
+      return {
+        ...state,
+        handoffResultByRepo: { ...state.handoffResultByRepo, [event.repoPath]: event.result },
+      };
     case "local/graph-requested":
       return {
         ...state,

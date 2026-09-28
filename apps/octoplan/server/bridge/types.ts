@@ -1,9 +1,15 @@
 import type { Options, SDKMessage, SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
-import type { ServerEvent } from "@octogent/octoplan-protocol";
+import type { HandoffTentacle, ServerEvent } from "@octogent/octoplan-protocol";
 import type { Integrations } from "../integrations/types";
 import type { ApplyCoverageUpdate, GetMode } from "../modes/types";
 import type { BuildConvergeTurn } from "../modes/wave2Types";
-import type { IdeaRegistry, PlanStoreFactory } from "../store/types";
+import type {
+  ConventionsStore,
+  HarvestCandidateInput,
+  IdeaRegistry,
+  PlanStoreFactory,
+  TranscriptStore,
+} from "../store/types";
 
 /** The slice of the Agent SDK's `query` the bridge uses; tests inject a scripted fake. */
 export type QueryFn = (params: {
@@ -41,6 +47,30 @@ export type BridgeDeps = {
   integrations?: Integrations;
   /** Wave 2: cross-project idea search. Absent = search covers only repos opened this run. */
   ideaRegistry?: IdeaRegistry;
-};
+} & BridgeV2Deps;
 
 export type Broadcast = (event: ServerEvent) => void;
+
+// ---- v2 ----
+
+/** Extra deps for v2; all optional so v1 tests keep working. */
+export type BridgeV2Deps = {
+  /** D29: session transcripts; absent = sessions don't survive a restart. */
+  transcripts?: TranscriptStore;
+  /** D28: user conventions for the digest; absent = digest without conventions. */
+  conventions?: ConventionsStore;
+  /** D18: append the digest every N answered rounds (default 3; 0 = off). */
+  recapEvery?: number;
+};
+
+/**
+ * One short read-only Agent SDK query per call (D31, D45): planning lockdown (read tools
+ * only, project settings only), a single octoplan MCP tool, bounded turns. Returns what
+ * Claude passed to that tool; an empty result is not an error.
+ */
+export type HeadlessRunner = {
+  harvest(input: { repoPath: string; prompt: string }): Promise<HarvestCandidateInput[]>;
+  proposeHandoff(input: { repoPath: string; prompt: string }): Promise<HandoffTentacle[]>;
+};
+
+export type CreateHeadlessRunner = (deps: { query: QueryFn; maxTurns?: number }) => HeadlessRunner;

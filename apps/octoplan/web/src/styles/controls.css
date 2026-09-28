@@ -19,7 +19,7 @@
 .op-button:focus-visible,
 .op-session:focus-visible,
 .op-board-toggle:focus-visible,
-.op-tray-item:focus-visible,
+.op-round-stub:focus-visible,
 .op-card-toggle:focus-visible {
   outline: 1px solid var(--accent-primary);
   outline-offset: 1px;

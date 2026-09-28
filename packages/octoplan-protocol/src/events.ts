@@ -17,6 +17,14 @@ import {
   sessionSchema,
   stageSchema,
 } from "./domain";
+import {
+  conventionSchema,
+  handoffPlanSchema,
+  handoffResultSchema,
+  harvestCandidateSchema,
+  overviewSchema,
+  sessionLogSummarySchema,
+} from "./v2";
 
 export const PROTOCOL_VERSION = 1;
 
@@ -28,6 +36,13 @@ export const planSnapshotSchema = z.object({
   ideas: z.array(ideaSchema),
   coverage: coverageStateSchema,
   goal: goalDocSchema.nullable(),
+  // v2 — optional so v1 fixtures and older servers still parse.
+  /** docs/plan/HARVEST.md (D27). */
+  harvest: z.array(harvestCandidateSchema).optional(),
+  /** docs/plan/sessions/*.md, newest first (D13). */
+  sessionLogs: z.array(sessionLogSummarySchema).optional(),
+  /** docs/plan/HANDOFF.md (D46), or null when there is none. */
+  handoff: handoffPlanSchema.nullable().optional(),
 });
 export type PlanSnapshot = z.infer<typeof planSnapshotSchema>;
 
@@ -62,6 +77,24 @@ export const serverEventSchema = z.discriminatedUnion("type", [
     message: z.string(),
   }),
   z.object({ type: z.literal("graph"), graph: gitGraphSchema }),
+  // v2
+  /** Tentacle cards, drift badges and history for one repo (reply to request-overview). */
+  z.object({ type: z.literal("overview"), overview: overviewSchema }),
+  /** User-level conventions from ~/.octoplan/CONVENTIONS.md (sent on hello and after edits). */
+  z.object({ type: z.literal("conventions"), conventions: z.array(conventionSchema) }),
+  /** Long-running plan work (harvest, handoff generate/apply) so the UI can show a spinner. */
+  z.object({
+    type: z.literal("plan-job"),
+    repoPath: z.string(),
+    job: z.enum(["harvest", "handoff-generate", "handoff-apply"]),
+    state: z.enum(["running", "done", "failed"]),
+    message: z.string(),
+  }),
+  z.object({
+    type: z.literal("handoff-result"),
+    repoPath: z.string(),
+    result: handoffResultSchema,
+  }),
 ]);
 export type ServerEvent = z.infer<typeof serverEventSchema>;
 
@@ -120,8 +153,30 @@ export const clientEventSchema = z.discriminatedUnion("type", [
       .min(1)
       .regex(/^[a-z0-9][a-z0-9-]*$/, "lowercase letters, digits and dashes"),
     tasks: z.array(z.string().min(1)),
+    /** v2 (D48): the `## heading` todos go under; created when missing. */
+    heading: z.string().min(1).optional(),
   }),
   z.object({ type: z.literal("request-graph"), repoPath: z.string() }),
+  // v2
+  z.object({ type: z.literal("request-overview"), repoPath: z.string() }),
+  /** Run a harvest now (it also runs on repo open when there are new commits, D17). */
+  z.object({ type: z.literal("run-harvest"), repoPath: z.string() }),
+  z.object({
+    type: z.literal("resolve-harvest"),
+    repoPath: z.string(),
+    harvestId: z.string(),
+    action: z.enum(["accept", "reject"]),
+  }),
+  z.object({ type: z.literal("add-convention"), title: z.string().min(1), body: z.string() }),
+  z.object({ type: z.literal("remove-convention"), conventionId: z.string() }),
+  z.object({
+    type: z.literal("generate-handoff"),
+    repoPath: z.string(),
+    heading: z.string().min(1).optional(),
+  }),
+  /** Save the reviewed draft (wizard edits) to HANDOFF.md. */
+  z.object({ type: z.literal("save-handoff"), repoPath: z.string(), plan: handoffPlanSchema }),
+  z.object({ type: z.literal("apply-handoff"), repoPath: z.string() }),
   z.object({
     type: z.literal("link-branch"),
     repoPath: z.string(),

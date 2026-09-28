@@ -3,7 +3,7 @@ import {
   type Question,
   encodeAnswerText,
 } from "@octogent/octoplan-protocol";
-import { useId } from "react";
+import { useId, useState } from "react";
 import { ModifierBadge } from "./ModifierBadge";
 import {
   type QuestionDraft,
@@ -37,6 +37,8 @@ export const QuestionBlock = ({
   onAssumption,
 }: QuestionBlockProps) => {
   const baseId = useId();
+  // Option whose input holds DOM focus; its description drops the one-line clamp (D43).
+  const [focusedOption, setFocusedOption] = useState<number | null>(null);
   const textId = `${baseId}-text`;
   const answered = isDraftAnswered(draft);
   const withPreview = hasPreviews(question);
@@ -74,9 +76,19 @@ export const QuestionBlock = ({
             const classes = ["qc-option"];
             if (isRecommended(option.label)) classes.push("qc-option--recommended");
             if (checked) classes.push("qc-option--checked");
-            if (active && draft.cursor === optionIndex) classes.push("qc-option--cursor");
+            const isCursor = active && draft.cursor === optionIndex;
+            if (isCursor) classes.push("qc-option--cursor");
+            // The keyboard cursor counts as focus: the option under it shows its full description.
+            const expanded = focusedOption === optionIndex || isCursor;
             return (
-              <label key={option.label} className={classes.join(" ")}>
+              <label
+                key={option.label}
+                className={classes.join(" ")}
+                onFocus={() => setFocusedOption(optionIndex)}
+                onBlur={() =>
+                  setFocusedOption((current) => (current === optionIndex ? null : current))
+                }
+              >
                 <input
                   type={question.multiSelect ? "checkbox" : "radio"}
                   name={`${baseId}-choice`}
@@ -93,7 +105,13 @@ export const QuestionBlock = ({
                   <span id={labelId} className="qc-option-label">
                     {option.label}
                   </span>
-                  <span id={descId} className="qc-option-desc">
+                  <span
+                    id={descId}
+                    className={
+                      expanded ? "qc-option-desc" : "qc-option-desc qc-option-desc--clamped"
+                    }
+                    title={option.description}
+                  >
                     {option.description}
                   </span>
                 </span>

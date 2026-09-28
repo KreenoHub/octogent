@@ -1,0 +1,215 @@
+/* v2 stream: answer dock (D14), prose digests (D15), grouped tool rows (D19). */
+
+/* The pending round, docked between the stream and the composer; it never scrolls away. */
+.op-dock {
+  flex: none;
+  max-height: 55%;
+  overflow: auto;
+  margin-top: 0.4rem;
+  padding: 0.5rem 0.75rem 0.6rem;
+  background: var(--bg-surface-1);
+  border: 1px solid var(--term-warning);
+  border-bottom: none;
+}
+
+.op-dock:focus-visible {
+  outline: 1px solid var(--accent-primary);
+}
+
+.op-dock-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.4rem;
+}
+
+.op-dock-title {
+  flex: 1;
+  font-family: "Silkscreen", cursive;
+  font-size: 0.8rem;
+  color: var(--term-warning);
+}
+
+.op-dock-more {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+/* R3: the latest prose digest line above the docked round. */
+.op-dock-digest {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  width: 100%;
+  margin-bottom: 0.45rem;
+  padding: 0.2rem 0.4rem;
+  font-family: var(--font-main);
+  text-align: left;
+  background: var(--bg-surface-2);
+  border: 1px solid transparent;
+  border-left: 2px solid var(--accent-primary);
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.op-dock-digest:hover,
+.op-dock-digest:focus-visible {
+  border-color: var(--accent-primary);
+  outline: none;
+}
+
+/* The stream's one-line stand-in for a round waiting in the dock. */
+.op-round-stub {
+  display: flex;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.25rem 0.5rem;
+  font-family: var(--font-main);
+  font-size: 0.75rem;
+  text-align: left;
+  color: var(--text-secondary);
+  background: none;
+  border: 1px dashed var(--term-warning);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.op-round-stub:hover {
+  color: var(--text-primary);
+  border-style: solid;
+}
+
+.op-round-stub-label {
+  flex: none;
+  font-family: "Silkscreen", cursive;
+  color: var(--term-warning);
+}
+
+.op-round-stub-headers {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.op-round-stub-hint {
+  flex: none;
+  color: var(--term-warning);
+}
+
+/* A folded prose section is one line: heading, then its first line dimmed. */
+.op-digest {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0;
+  font-family: var(--font-main);
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.op-digest-title {
+  flex: none;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: "Silkscreen", cursive;
+  font-size: 0.8rem;
+  color: var(--accent-primary);
+}
+
+.op-digest-line {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.op-digest:hover .op-digest-line,
+.op-digest:focus-visible .op-digest-line {
+  color: var(--text-primary);
+}
+
+.op-digest:focus-visible {
+  outline: 1px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.op-card[data-collapsed="true"] {
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+}
+
+/* Folded cards stay one line: the toolbar floats over the right edge on hover/focus. */
+.op-card[data-collapsed="true"] .op-card-actions {
+  position: absolute;
+  top: 50%;
+  right: 0.4rem;
+  margin: 0;
+  padding-left: 0.5rem;
+  transform: translateY(-50%);
+  background: var(--bg-surface-1);
+  pointer-events: none;
+}
+
+.op-card[data-collapsed="true"]:hover .op-card-actions,
+.op-card[data-collapsed="true"]:focus-within .op-card-actions {
+  pointer-events: auto;
+}
+
+/* A run of tool calls as one summary row. */
+.op-tool-group {
+  border-left: 2px solid var(--border-subtle);
+}
+
+.op-tool-group-toggle {
+  display: flex;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.15rem 0.5rem;
+  font-family: var(--font-main);
+  font-size: 0.75rem;
+  text-align: left;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.op-tool-group-toggle::before {
+  content: "+";
+}
+
+.op-tool-group-toggle[aria-expanded="true"]::before {
+  content: "−";
+}
+
+.op-tool-group-toggle:hover,
+.op-tool-group-toggle:focus-visible {
+  color: var(--text-primary);
+  outline: none;
+}
+
+.op-tool-group-count {
+  flex: none;
+  color: var(--term-blue);
+}
+
+.op-tool-group-rows {
+  padding-left: 0.6rem;
+}
+
+.op-tool-group-rows .op-tool-row {
+  border-left: none;
+}

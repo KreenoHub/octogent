@@ -1,4 +1,12 @@
-export type Overlay = "none" | "focus" | "new-session" | "idea" | "branch" | "graph" | "export";
+export type Overlay =
+  | "none"
+  | "focus"
+  | "new-session"
+  | "idea"
+  | "branch"
+  | "graph"
+  | "export"
+  | "handoff";
 
 /** `?focus=1` opens focus mode on load: a bookmarkable "just answer questions" view. */
 export const initialOverlay = (search: string): Overlay =>

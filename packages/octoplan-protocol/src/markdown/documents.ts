@@ -1,5 +1,20 @@
 import type { AnswerModifier, CoverageStatus, GoalDoc, ModeId, Stage } from "../domain";
-import { type MdRecord, getMeta, mergeMeta, parseRecordDoc, serializeRecordDoc } from "./records";
+import {
+  type HandoffPlan,
+  type HandoffTentacle,
+  type HandoffTodo,
+  handoffPlanSchema,
+  handoffTentacleSchema,
+} from "../v2";
+import { PLAN_FILES } from "./planFiles";
+import {
+  type MdRecord,
+  getMeta,
+  getMetaList,
+  mergeMeta,
+  parseRecordDoc,
+  serializeRecordDoc,
+} from "./records";
 
 // ---------- GOAL.md ----------
 //
@@ -227,19 +242,235 @@ export const parseSessionLog = (text: string): SessionLog => {
 export const serializeStage = (stage: Stage): string => {
   const longestRun = Math.max(2, ...[...stage.prompt.matchAll(/`+/g)].map((m) => m[0].length));
   const fence = "`".repeat(longestRun + 1);
-  return `# Stage ${stage.index} — ${stage.title}\n\n## Goal\n\n${stage.goal.trim()}\n\n## Prompt\n\n${fence}text\n${stage.prompt.replace(/\n+$/, "")}\n${fence}\n`;
+  // v2 (G1): `## Decisions` with a comma list, only when the stage cites any.
+  const decisions =
+    stage.decisionIds && stage.decisionIds.length > 0
+      ? `## Decisions\n\n${stage.decisionIds.join(", ")}\n\n`
+      : "";
+  return `# Stage ${stage.index} — ${stage.title}\n\n## Goal\n\n${stage.goal.trim()}\n\n${decisions}## Prompt\n\n${fence}text\n${stage.prompt.replace(/\n+$/, "")}\n${fence}\n`;
 };
 
 export const parseStage = (text: string): Stage | null => {
   const normalized = text.replace(/\r\n/g, "\n");
   const head = /^# Stage (\d+)\s*[—–-]\s*(.*)$/m.exec(normalized);
-  const goal = /## Goal\n\n([\s\S]*?)\n\n## Prompt/.exec(normalized);
   const prompt = /## Prompt\n\n(`{3,})text\n([\s\S]*?)\n\1\s*$/.exec(normalized);
   if (!head?.[1] || !prompt) return null;
+  // Everything before the prompt, so a prompt that mentions "## Decisions" can't confuse it.
+  const before = normalized.slice(0, prompt.index + "## Prompt".length);
+  const goal = /## Goal\n\n([\s\S]*?)\n\n## (?:Decisions|Prompt)/.exec(before);
+  const decisions = /## Decisions\n\n([\s\S]*?)\n\n## Prompt/.exec(before);
+  const decisionIds = (decisions?.[1] ?? "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0);
   return {
     index: Number.parseInt(head[1], 10),
     title: (head[2] ?? "").trim(),
     goal: (goal?.[1] ?? "").trim(),
     prompt: prompt[2] ?? "",
+    ...(decisionIds.length > 0 ? { decisionIds } : {}),
   };
+};
+
+// ---------- preamble meta lines ----------
+//
+// Some files keep a few `- key: value` lines in their preamble (HARVEST.md's harvest mark,
+// HANDOFF.md's status). These helpers read and replace one line without touching the rest.
+
+const preambleLineRe = (key: string) => new RegExp(`^- ${key}: ?(.*)$`);
+
+export const getPreambleMeta = (preamble: string, key: string): string | undefined => {
+  const re = preambleLineRe(key);
+  for (const line of preamble.replace(/\r\n/g, "\n").split("\n")) {
+    const match = re.exec(line);
+    if (match) return (match[1] ?? "").trim();
+  }
+  return undefined;
+};
+
+/** Replaces the key's line in place, or appends it at the end of the preamble. */
+export const setPreambleMeta = (preamble: string, key: string, value: string): string => {
+  const re = preambleLineRe(key);
+  const lines = preamble.replace(/\r\n/g, "\n").split("\n");
+  const line = `- ${key}: ${oneLineText(value)}`;
+  const index = lines.findIndex((l) => re.test(l));
+  if (index !== -1) {
+    lines[index] = line;
+    return lines.join("\n");
+  }
+  const trimmed = preamble.trim();
+  if (trimmed === "") return line;
+  // Join a trailing block of meta lines instead of starting a new paragraph.
+  return /(^|\n)- [a-z][a-z0-9-]*:.*$/.test(trimmed)
+    ? `${trimmed}\n${line}`
+    : `${trimmed}\n\n${line}`;
+};
+
+/** HARVEST.md preamble key for the newest commit sha the last harvest covered. */
+export const HARVEST_MARK_KEY = "last-harvest";
+
+// ---------- HANDOFF.md (D46) ----------
+//
+// # Handoff to Octogent
+//
+// - status: draft
+// - generated: 2026-09-27T10:00:00.000Z
+// - source: claude
+// - workspace: /path/to/checkout
+// - heading: Octoplan v2
+//
+// <!-- op:id=T1 -->
+// ## T1 — Store
+// - id: store
+// - description: Reads and writes docs/plan.
+// - owns: apps/octoplan/server/store, apps/octoplan/tests/store
+// - existing: yes
+//
+// - [ ] [D27] HARVEST.md round-trips. Done when …
+//
+// ### Wave 4
+//
+// - [ ] [D28, D4] Conventions store. Done when …
+//
+// The octopus prompt is not stored here; it lives in OCTOPUS.md (D47).
+
+const HANDOFF_KEYS = ["status", "generated", "applied", "source", "workspace", "heading"];
+const HANDOFF_NOTE =
+  "Tentacles and todos for Octogent. Edit freely: todo lines are read back as written. The octopus prompt is in OCTOPUS.md.";
+const TODO_RE = /^- \[( |x|X)\] (.*)$/;
+const TODO_IDS_RE = /^\[([A-Z][A-Za-z]*\d+(?:\s*,\s*[A-Z][A-Za-z]*\d+)*)\]\s+(.*)$/;
+const WAVE_RE = /^###\s+(.*)$/;
+
+const oneLineText = (value: string) => value.replace(/\s*\n\s*/g, " ").trim();
+
+export const serializeHandoffTodo = (todo: HandoffTodo) => {
+  const ids = todo.decisionIds.length > 0 ? `[${todo.decisionIds.join(", ")}] ` : "";
+  return `- [ ] ${ids}${oneLineText(todo.text)}`;
+};
+
+/** Todos grouped by wave in order of first appearance; todos without a wave come first. */
+const serializeTodos = (todos: readonly HandoffTodo[]) => {
+  const waves: string[] = [];
+  for (const todo of todos) if (!waves.includes(todo.wave)) waves.push(todo.wave);
+  waves.sort((a, b) => (a === "" ? -1 : b === "" ? 1 : 0));
+  return waves
+    .map((wave) => {
+      const lines = todos.filter((t) => t.wave === wave).map(serializeHandoffTodo);
+      return wave === "" ? lines.join("\n") : `### ${oneLineText(wave)}\n\n${lines.join("\n")}`;
+    })
+    .join("\n\n");
+};
+
+/** Checkbox lines under optional `### <wave>` subheadings; other lines are ignored. */
+export const parseHandoffTodos = (body: string): HandoffTodo[] => {
+  const todos: HandoffTodo[] = [];
+  let wave = "";
+  for (const line of body.replace(/\r\n/g, "\n").split("\n")) {
+    const heading = WAVE_RE.exec(line);
+    if (heading) {
+      wave = (heading[1] ?? "").trim();
+      continue;
+    }
+    const todo = TODO_RE.exec(line.trimEnd());
+    if (!todo) continue;
+    const rest = (todo[2] ?? "").trim();
+    const ids = TODO_IDS_RE.exec(rest);
+    const text = (ids ? (ids[2] ?? "") : rest).trim();
+    if (!text) continue;
+    todos.push({
+      text,
+      decisionIds: ids ? (ids[1] ?? "").split(",").map((id) => id.trim()) : [],
+      wave,
+    });
+  }
+  return todos;
+};
+
+const tentacleRecord = (tentacle: HandoffTentacle, index: number, existing?: MdRecord) => ({
+  id: `T${index + 1}`,
+  title: oneLineText(tentacle.name),
+  meta: mergeMeta(existing?.meta ?? [], [
+    ["id", tentacle.id],
+    ["description", oneLineText(tentacle.description)],
+    ["owns", tentacle.owns.length > 0 ? tentacle.owns.join(", ") : undefined],
+    ["existing", tentacle.existing ? "yes" : "no"],
+  ]),
+  body: serializeTodos(tentacle.todos),
+});
+
+/**
+ * HANDOFF.md for a plan (its octopusPrompt is ignored). Given the file's current text, the
+ * title, unknown preamble lines and unknown tentacle meta keys (matched by tentacle id) are
+ * kept, so hand edits win.
+ */
+export const serializeHandoffDoc = (
+  plan: Omit<HandoffPlan, "octopusPrompt"> & { octopusPrompt?: string },
+  existing?: string | null,
+): string => {
+  const old = existing ? parseRecordDoc(existing) : null;
+  const oldLines = old ? old.preamble.split("\n") : [];
+  const hasTitle = oldLines[0]?.startsWith("# ") ?? false;
+  const title = hasTitle ? (oldLines[0] ?? "") : PLAN_FILES.handoff.preamble;
+  const known = new RegExp(`^- (?:${HANDOFF_KEYS.join("|")}):`);
+  const extras = old
+    ? oldLines
+        .slice(hasTitle ? 1 : 0)
+        .filter((line) => !known.test(line))
+        .join("\n")
+        .trim()
+    : HANDOFF_NOTE;
+  const meta: Array<[string, string | undefined]> = [
+    ["status", plan.status],
+    ["generated", plan.generatedAt],
+    ["applied", plan.appliedAt],
+    ["source", plan.source],
+    ["workspace", plan.workspace],
+    ["heading", plan.heading],
+  ];
+  const metaLines = meta
+    .filter((entry): entry is [string, string] => entry[1] !== undefined)
+    .map(([key, value]) => `- ${key}: ${oneLineText(value)}`);
+  const preamble = [title, "", ...metaLines, ...(extras ? ["", extras] : [])].join("\n");
+  const records = plan.tentacles.map((tentacle, index) =>
+    tentacleRecord(
+      tentacle,
+      index,
+      old?.records.find((record) => getMeta(record, "id") === tentacle.id),
+    ),
+  );
+  return serializeRecordDoc({ preamble, records });
+};
+
+/** A tentacle from its T-record, or null when a hand edit broke it. */
+export const parseHandoffTentacle = (record: MdRecord): HandoffTentacle | null => {
+  const parsed = handoffTentacleSchema.safeParse({
+    id: getMeta(record, "id") ?? "",
+    name: record.title,
+    description: getMeta(record, "description") ?? "",
+    owns: getMetaList(record, "owns"),
+    existing: /^(yes|true)$/i.test(getMeta(record, "existing") ?? ""),
+    todos: parseHandoffTodos(record.body),
+  });
+  return parsed.success ? parsed.data : null;
+};
+
+/** HANDOFF.md back into a plan; broken tentacles are skipped, a broken header reads as null. */
+export const parseHandoffDoc = (text: string, octopusPrompt = ""): HandoffPlan | null => {
+  if (text.trim() === "") return null;
+  const doc = parseRecordDoc(text);
+  const meta = (key: string) => getPreambleMeta(doc.preamble, key);
+  const appliedAt = meta("applied");
+  const parsed = handoffPlanSchema.safeParse({
+    status: meta("status") ?? "draft",
+    generatedAt: meta("generated") ?? "",
+    ...(appliedAt ? { appliedAt } : {}),
+    source: meta("source") ?? "claude",
+    workspace: meta("workspace") ?? "",
+    heading: meta("heading") ?? "",
+    tentacles: doc.records
+      .map(parseHandoffTentacle)
+      .filter((t): t is HandoffTentacle => t !== null),
+    octopusPrompt,
+  });
+  return parsed.success ? parsed.data : null;
 };

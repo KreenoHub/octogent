@@ -1,7 +1,7 @@
 // Filesystem PlanStore: docs/plan markdown in the target repo is the source of truth (D10).
 // Every write is read -> upsert -> write through the protocol codecs, so hand edits win.
 import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import {
   type Answer,
   COVERAGE_DIMENSION_LABELS,
@@ -11,6 +11,10 @@ import {
   type Decision,
   type Gap,
   type GoalDoc,
+  HARVEST_MARK_KEY,
+  type HandoffPlan,
+  type HarvestCandidate,
+  type HistoryEvent,
   type Idea,
   PLAN_DIR,
   PLAN_FILES,
@@ -24,12 +28,17 @@ import {
   SESSIONS_DIR,
   STAGES_DIR,
   type SessionLogEntry,
+  type SessionLogSummary,
   type Stage,
   branchCodec,
   coverageCodec,
   decisionCodec,
   gapCodec,
+  getMeta,
+  getPreambleMeta,
   goalDocSchema,
+  handoffPlanSchema,
+  harvestCodec,
   ideaCodec,
   nextId,
   parkedCodec,
@@ -40,16 +49,18 @@ import {
   readItems,
   riskCodec,
   serializeGoalDoc,
+  serializeHandoffDoc,
   serializeRecordDoc,
   serializeStage,
   sessionFileName,
+  setPreambleMeta,
   slugify,
   stageFileName,
   stageSchema,
   upsertItem,
 } from "@octogent/octoplan-protocol";
 import { FileWriter, readTextOrNull } from "./fsIo";
-import { INDEXED_FILES, PlanIndex, type PlanWarningListener, toCoverageState } from "./index";
+import { PlanIndex, type PlanWarningListener, isIndexedPath, toCoverageState } from "./index";
 import {
   displayAnswer,
   entryRecord,
@@ -61,6 +72,7 @@ import {
 import type {
   BranchInput,
   DecisionInput,
+  HarvestCandidateInput,
   PlanChangeListener,
   PlanStore,
   StartSessionLogInput,
@@ -76,7 +88,13 @@ export type FsPlanStoreOptions = {
   debounceMs?: number;
 };
 
-type ListFileKey = Exclude<PlanFileKey, "goal">;
+// GOAL.md, HANDOFF.md and OCTOPUS.md have serializers of their own.
+type ListFileKey = Exclude<PlanFileKey, "goal" | "handoff" | "octopus">;
+
+/** Harvest titles compare case- and whitespace-insensitively (rejected ones never return). */
+const titleKey = (title: string) => title.trim().replace(/\s+/g, " ").toLowerCase();
+
+const byAt = (a: HistoryEvent, b: HistoryEvent) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0);
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}/;
 const STAGE_FILE_RE = /^STAGE-(\d+)\.md$/;
@@ -88,6 +106,9 @@ const today = () => {
 };
 
 const dateOf = (timestamp: string) => DATE_RE.exec(timestamp)?.[0] ?? today();
+
+/** A session log's path relative to docs/plan, as the index and watcher name it. */
+const sessionRel = (path: string) => `${SESSIONS_DIR}/${basename(path)}`;
 
 const findItem = <T extends { id: string }>(doc: RecordDoc, codec: RecordCodec<T>, id: string) => {
   const record = doc.records.find((r) => r.id === id);
@@ -268,7 +289,7 @@ class FsPlanStore implements PlanStore {
       if (!(await this.claim(path))) continue;
       await this.writer.mutate(path, () => ({ text, result: undefined }));
       this.sessionPaths.set(input.sessionId, path);
-      this.scheduleEmit();
+      await this.afterWrite([sessionRel(path)]);
       return path;
     }
   }
@@ -299,19 +320,21 @@ class FsPlanStore implements PlanStore {
   }
 
   async setClaudeSessionId(sessionId: string, claudeSessionId: string): Promise<void> {
-    await this.writer.mutate(await this.requireSessionPath(sessionId), (current) => ({
+    const path = await this.requireSessionPath(sessionId);
+    await this.writer.mutate(path, (current) => ({
       text: current === null ? null : rewriteHeader(current, { claudeSessionId }),
       result: undefined,
     }));
-    this.scheduleEmit();
+    await this.afterWrite([sessionRel(path)]);
   }
 
   async writeSessionSummary(sessionId: string, summary: string): Promise<void> {
-    await this.writer.mutate(await this.requireSessionPath(sessionId), (current) => ({
+    const path = await this.requireSessionPath(sessionId);
+    await this.writer.mutate(path, (current) => ({
       text: current === null ? null : rewriteHeader(current, { summary }),
       result: undefined,
     }));
-    this.scheduleEmit();
+    await this.afterWrite([sessionRel(path)]);
   }
 
   async latestAnswer(sessionId: string, questionId: string): Promise<SessionLogEntry | null> {
@@ -338,7 +361,7 @@ class FsPlanStore implements PlanStore {
         mode: "deep-interview",
         startedAt: answers[0]?.answeredAt ?? new Date().toISOString(),
       }));
-    const logRel = `${SESSIONS_DIR}/${path.slice(this.sessionsDir.length + 1)}`;
+    const logRel = sessionRel(path);
 
     type Recorded = { entry: SessionLogEntry; previous: SessionLogEntry | null };
     const recorded = await this.writer.mutate(path, (current) => {
@@ -402,7 +425,7 @@ class FsPlanStore implements PlanStore {
         });
       }
     }
-    this.scheduleEmit();
+    await this.afterWrite([logRel]);
     return recorded.map((r) => r.entry);
   }
 
@@ -499,8 +522,228 @@ class FsPlanStore implements PlanStore {
         { ...input, id: input.id ?? nextId(doc, "B") },
         PLAN_FILES.branches.path,
       );
-      return { doc: upsertItem(doc, branchCodec, branch), result: branch };
+      const next = upsertItem(doc, branchCodec, branch);
+      // The codec has no date; an extra `date` meta key dates the branch on the History tab.
+      const record = next.records.find((r) => r.id === branch.id);
+      if (record && getMeta(record, "date") === undefined) record.meta.unshift(["date", today()]);
+      return { doc: next, result: branch };
     });
+  }
+
+  // ---------- v2: harvest (D27) ----------
+
+  // Accepting reads HARVEST.md, writes DECISIONS.md, then HARVEST.md again; one at a time.
+  private harvestQueue: Promise<unknown> = Promise.resolve();
+
+  async readHarvest(): Promise<HarvestCandidate[]> {
+    return (await this.index.sync()).snapshot.harvest ?? [];
+  }
+
+  async addHarvest(inputs: readonly HarvestCandidateInput[]): Promise<HarvestCandidate[]> {
+    if (inputs.length === 0) return [];
+    return this.mutateList("harvest", (doc) => {
+      // Raw record titles, so even a hand-broken record still blocks its title.
+      const known = new Set(doc.records.map((record) => titleKey(record.title)));
+      const added: HarvestCandidate[] = [];
+      let next = doc;
+      for (const input of inputs) {
+        const key = titleKey(input.title);
+        if (!key || known.has(key)) continue;
+        known.add(key);
+        const { date, ...rest } = input;
+        const candidate = checked(
+          harvestCodec,
+          { ...rest, id: nextId(next, "H"), date: date ?? today(), status: "pending" },
+          PLAN_FILES.harvest.path,
+        );
+        next = upsertItem(next, harvestCodec, candidate);
+        added.push(candidate);
+      }
+      return { doc: added.length > 0 ? next : null, result: added };
+    });
+  }
+
+  resolveHarvest(
+    id: string,
+    action: "accept" | "reject",
+  ): Promise<{ candidate: HarvestCandidate; decision?: Decision }> {
+    const run = this.harvestQueue.catch(() => undefined).then(() => this.resolveOne(id, action));
+    this.harvestQueue = run;
+    return run;
+  }
+
+  private async resolveOne(
+    id: string,
+    action: "accept" | "reject",
+  ): Promise<{ candidate: HarvestCandidate; decision?: Decision }> {
+    const text = await readTextOrNull(this.planPath(PLAN_FILES.harvest.path));
+    const found = text === null ? null : findItem(parseRecordDoc(text), harvestCodec, id);
+    if (!found) throw new Error(`unknown harvest candidate ${id} in ${PLAN_FILES.harvest.path}`);
+    let decision: Decision | undefined;
+    if (action === "accept") {
+      const linked = found.decisionId
+        ? (await this.index.sync()).snapshot.decisions.find((d) => d.id === found.decisionId)
+        : undefined;
+      // Accepting twice keeps the first D-record instead of writing a duplicate.
+      decision =
+        linked ??
+        (await this.upsertDecision({
+          title: found.title,
+          body: found.body,
+          source: `harvest ${id}`,
+          questionIds: [],
+          dependsOn: [],
+        }));
+    }
+    const candidate = await this.mutateList("harvest", (doc) => {
+      const current = findItem(doc, harvestCodec, id) ?? found;
+      const item: HarvestCandidate =
+        action === "accept"
+          ? { ...current, status: "accepted", ...(decision ? { decisionId: decision.id } : {}) }
+          : { ...current, status: "rejected" };
+      return { doc: upsertItem(doc, harvestCodec, item), result: item };
+    });
+    return decision ? { candidate, decision } : { candidate };
+  }
+
+  async harvestMark(): Promise<string | null> {
+    const text = await readTextOrNull(this.planPath(PLAN_FILES.harvest.path));
+    if (text === null) return null;
+    return getPreambleMeta(parseRecordDoc(text).preamble, HARVEST_MARK_KEY) || null;
+  }
+
+  async setHarvestMark(sha: string): Promise<void> {
+    await this.mutateList("harvest", (doc) => ({
+      doc: { ...doc, preamble: setPreambleMeta(doc.preamble, HARVEST_MARK_KEY, sha) },
+      result: undefined,
+    }));
+  }
+
+  // ---------- v2: overview (D13, D24) ----------
+
+  async readSessionLogs(): Promise<SessionLogSummary[]> {
+    return (await this.index.sync()).snapshot.sessionLogs ?? [];
+  }
+
+  async readHistory(): Promise<HistoryEvent[]> {
+    const { snapshot } = await this.index.sync();
+    const logs = this.index.sessionLogs;
+    const events: HistoryEvent[] = [];
+
+    for (const { file, log } of logs) {
+      events.push({
+        at: log.startedAt,
+        kind: "session",
+        refId: file,
+        title: log.title || file,
+        sessionFile: file,
+      });
+      for (const entry of log.entries) {
+        if (!entry.revises) continue;
+        events.push({
+          at: entry.answeredAt,
+          kind: "revision",
+          refId: entry.id,
+          title: `${entry.questionText}: ${entry.answer} (revises ${entry.revises})`,
+          sessionFile: file,
+        });
+      }
+    }
+
+    for (const decision of snapshot.decisions) {
+      events.push({
+        at: decision.date,
+        kind: "decision",
+        refId: decision.id,
+        title: decision.title,
+      });
+      // No stale date is stored, so the mark sits on the decision's own date.
+      if (decision.status === "stale") {
+        events.push({
+          at: decision.date,
+          kind: "stale",
+          refId: decision.id,
+          title: `${decision.title} (stale)`,
+        });
+      }
+    }
+
+    const logFor = (sessionId: string) => logs.find((l) => l.sessionId === sessionId);
+    const branchesText = await readTextOrNull(this.planPath(PLAN_FILES.branches.path));
+    for (const record of branchesText === null ? [] : parseRecordDoc(branchesText).records) {
+      const branch = branchCodec.fromRecord(record);
+      if (!branch) continue;
+      const log = logFor(branch.sessionId) ?? logFor(branch.parentSessionId);
+      const at = getMeta(record, "date") || log?.log.startedAt || "";
+      events.push({
+        at,
+        kind: "branch",
+        refId: branch.id,
+        title: branch.title,
+        ...(log ? { sessionFile: log.file } : {}),
+      });
+    }
+
+    for (const candidate of snapshot.harvest ?? []) {
+      if (candidate.status === "pending") continue;
+      const title =
+        candidate.status === "accepted"
+          ? `Accepted: ${candidate.title}${candidate.decisionId ? ` as ${candidate.decisionId}` : ""}`
+          : `Rejected: ${candidate.title}`;
+      events.push({ at: candidate.date, kind: "harvest", refId: candidate.id, title });
+    }
+
+    const handoff = snapshot.handoff;
+    if (handoff) {
+      const count = `${handoff.tentacles.length} tentacle${handoff.tentacles.length === 1 ? "" : "s"}`;
+      events.push({
+        at: handoff.generatedAt,
+        kind: "handoff",
+        refId: PLAN_FILES.handoff.path,
+        title: `Handoff generated (${count})`,
+      });
+      if (handoff.appliedAt) {
+        events.push({
+          at: handoff.appliedAt,
+          kind: "handoff",
+          refId: PLAN_FILES.handoff.path,
+          title: `Handoff applied to ${handoff.workspace || "Octogent"} (${count})`,
+        });
+      }
+    }
+
+    // Array.prototype.sort is stable, so same-time events keep the order above.
+    return events.sort(byAt);
+  }
+
+  // ---------- v2: handoff (D46, D47) ----------
+
+  async readHandoff(): Promise<HandoffPlan | null> {
+    return (await this.index.sync()).snapshot.handoff ?? null;
+  }
+
+  async writeHandoff(plan: HandoffPlan): Promise<void> {
+    const valid = handoffPlanSchema.parse(plan);
+    await this.writer.mutate(this.planPath(PLAN_FILES.handoff.path), (current) => ({
+      text: serializeHandoffDoc(valid, current),
+      result: undefined,
+    }));
+    // HANDOFF.md doesn't hold the prompt, so a draft's prompt goes to OCTOPUS.md right away;
+    // otherwise it would be lost before Apply (which rewrites it with writeOctopusPrompt).
+    if (valid.octopusPrompt !== "") await this.writeOctopusText(valid.octopusPrompt);
+    await this.afterWrite([PLAN_FILES.handoff.path, PLAN_FILES.octopus.path]);
+  }
+
+  async writeOctopusPrompt(markdown: string): Promise<void> {
+    await this.writeOctopusText(markdown);
+    await this.afterWrite([PLAN_FILES.octopus.path]);
+  }
+
+  private writeOctopusText(markdown: string) {
+    return this.writer.mutate(this.planPath(PLAN_FILES.octopus.path), () => ({
+      text: markdown,
+      result: undefined,
+    }));
   }
 
   // ---------- change events ----------
@@ -523,7 +766,7 @@ class FsPlanStore implements PlanStore {
   }
 
   private async onExternalChange(files: string[]) {
-    const indexed = files.filter((f) => INDEXED_FILES.some((spec) => spec.path === f));
+    const indexed = files.filter(isIndexedPath);
     if (indexed.length === 0 || this.disposed) return;
     await this.index.refresh(indexed);
     this.scheduleEmit();

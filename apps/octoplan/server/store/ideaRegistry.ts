@@ -1,8 +1,9 @@
 // Cross-project idea inbox (wave 2). ~/.octoplan/projects.json lists known repo paths only;
 // the ideas themselves stay in each repo's docs/plan/IDEAS.md and are read on every search.
+import { readFileSync, statSync } from "node:fs";
 import { stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import type { Idea, IdeaSearchResult } from "@octogent/octoplan-protocol";
 import { FileWriter, readTextOrNull } from "./fsIo";
 import { createFsPlanStore } from "./fsPlanStore";
@@ -25,8 +26,54 @@ export const PROJECTS_FILE_NAME = "projects.json";
 const samePath = (a: string, b: string) =>
   process.platform === "win32" ? a.toLowerCase() === b.toLowerCase() : a === b;
 
+const trimSlashes = (path: string) => path.replace(/[\\/]+$/, "") || path;
+
+const isDirectorySync = (path: string) => {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+};
+
+// A linked worktree's root holds a `.git` FILE: "gitdir: <main>/.git/worktrees/<name>".
+const WORKTREE_GITDIR_RE = /^(.*)[\\/]\.git[\\/]worktrees[\\/][^\\/]+[\\/]?$/;
+
+/**
+ * A path inside a linked git worktree maps to the same place in its main checkout, so one
+ * repo's sessions never split across two projects. Plain fs reads, no git process; anything
+ * else (a normal checkout, a submodule, no repo) comes back unchanged.
+ */
+export const mainCheckoutOf = (path: string): string => {
+  for (let dir = path; ; ) {
+    const dotGit = join(dir, ".git");
+    let isFile: boolean | null = null;
+    try {
+      isFile = statSync(dotGit).isFile();
+    } catch {
+      isFile = null;
+    }
+    if (isFile === false) return path;
+    if (isFile) {
+      let gitdir: string | undefined;
+      try {
+        gitdir = /^gitdir:\s*(.+?)\s*$/m.exec(readFileSync(dotGit, "utf8"))?.[1];
+      } catch {
+        return path;
+      }
+      const main = gitdir ? WORKTREE_GITDIR_RE.exec(resolve(dir, gitdir))?.[1] : undefined;
+      if (!main || !isDirectorySync(main)) return path;
+      const rel = relative(dir, path);
+      return rel ? join(main, rel) : main;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) return path;
+    dir = parent;
+  }
+};
+
 const normalizeRepo = (repoPath: string) =>
-  resolve(repoPath).replace(/[\\/]+$/, "") || resolve(repoPath);
+  trimSlashes(mainCheckoutOf(trimSlashes(resolve(repoPath))));
 
 /** Paths from projects.json; a missing or corrupt file reads as no repos. */
 const parseProjects = (text: string | null): string[] => {

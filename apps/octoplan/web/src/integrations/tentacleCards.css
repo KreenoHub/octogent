@@ -1,0 +1,256 @@
+/* G tentacle cards (D23): pixel cards in Octogent tokens, dark only, same look as the graph. */
+
+.op-tc {
+  display: grid;
+  gap: 0.6rem;
+  font-family: var(--font-main);
+  font-size: 0.8rem;
+  color: var(--text-primary);
+}
+
+.op-tc-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #1f2733;
+}
+
+.op-tc-title {
+  margin: 0;
+  font-family: "Silkscreen", cursive;
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-primary);
+}
+
+.op-tc-total {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+.op-tc-loading {
+  color: var(--term-warning);
+  font-size: 0.7rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.op-tc-refresh {
+  margin-left: auto;
+  font-size: 0.66rem;
+  padding: 0.16rem 0.4rem;
+}
+
+.op-tc-workspace {
+  margin: -0.3rem 0 0;
+  font-size: 0.66rem;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.op-tc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.op-tc-card {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.5rem 0.6rem;
+  background: var(--bg-surface-1);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--accent-primary);
+  box-shadow: 3px 3px 0 #000;
+}
+
+.op-tc-card[data-complete="true"] {
+  border-left-color: var(--term-green);
+}
+
+.op-tc-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.op-tc-name {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-family: "Silkscreen", cursive;
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.op-tc-dots,
+.op-tc-pr-link {
+  display: inline-flex;
+  gap: 0.25rem;
+  flex: none;
+}
+
+.op-tc-pr-link:focus-visible {
+  outline: 1px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* Square pixel dots; "none" is an empty outline so absence reads at a glance. */
+.op-tc-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+}
+
+.op-tc-dot--ci-passing {
+  background: var(--term-green);
+  border-color: var(--term-green);
+}
+
+.op-tc-dot--ci-failing {
+  background: #ff5c5c;
+  border-color: #ff5c5c;
+}
+
+.op-tc-dot--ci-pending {
+  background: var(--term-warning);
+  border-color: var(--term-warning);
+  animation: op-tc-blink 1s steps(2, start) infinite;
+}
+
+.op-tc-dot--pr-open {
+  background: var(--term-green);
+  border-color: var(--term-green);
+}
+
+.op-tc-dot--pr-draft {
+  background: #8494ab;
+  border-color: #8494ab;
+}
+
+.op-tc-dot--pr-merged {
+  background: #c678dd;
+  border-color: #c678dd;
+}
+
+.op-tc-dot--pr-closed {
+  background: #ff5c5c;
+  border-color: #ff5c5c;
+}
+
+@keyframes op-tc-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .op-tc-dot--ci-pending {
+    animation: none;
+  }
+}
+
+.op-tc-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.op-tc-bar {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 2px;
+}
+
+.op-tc-seg {
+  height: 0.5rem;
+  background: var(--bg-surface-2);
+  border: 1px solid #1f2733;
+}
+
+.op-tc-seg[data-lit="true"] {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+.op-tc-card[data-complete="true"] .op-tc-seg[data-lit="true"] {
+  background: var(--term-green);
+  border-color: var(--term-green);
+}
+
+.op-tc-count {
+  flex: none;
+  min-width: 3rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-primary);
+}
+
+.op-tc-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.op-tc-ab {
+  display: inline-flex;
+  gap: 0.4rem;
+}
+
+.op-tc-ab [data-dir="ahead"] {
+  color: var(--term-green);
+}
+
+.op-tc-ab [data-dir="behind"] {
+  color: var(--term-warning);
+}
+
+.op-tc-muted {
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+.op-tc-empty {
+  padding: 0.75rem;
+  border: 1px dashed var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.op-tc-empty p {
+  margin: 0 0 0.4rem;
+}
+
+.op-tc-empty p:first-child {
+  color: var(--text-primary);
+}
+
+.op-tc-empty p:last-child {
+  margin-bottom: 0;
+}
+
+.op-tc-empty code {
+  padding: 0 0.25rem;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
+}

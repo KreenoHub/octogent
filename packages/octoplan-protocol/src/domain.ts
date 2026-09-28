@@ -10,6 +10,9 @@ export const ID_PREFIX = {
   idea: "I",
   done: "DOD",
   branch: "B",
+  harvest: "H",
+  convention: "C",
+  handoffTentacle: "T",
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIX;
@@ -194,6 +197,8 @@ export const stageSchema = z.object({
   title: z.string().min(1),
   goal: z.string(),
   prompt: z.string(),
+  /** v2 (G1): the decisions this stage builds, so export can stamp todos with D-ids. */
+  decisionIds: z.array(z.string()).optional(),
 });
 export type Stage = z.infer<typeof stageSchema>;
 
@@ -276,6 +281,8 @@ export const sessionSchema = z.object({
   status: z.enum(["starting", "running", "waiting-for-answer", "idle", "ended", "error"]),
   startedAt: z.string(),
   parentSessionId: z.string().optional(),
+  /** v2 (D29): rebuilt from its transcript after a server restart. */
+  restored: z.boolean().optional(),
 });
 export type Session = z.infer<typeof sessionSchema>;
 

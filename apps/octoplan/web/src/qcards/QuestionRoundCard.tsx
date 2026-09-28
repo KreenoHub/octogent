@@ -1,4 +1,6 @@
 import type { Answer, QuestionRound } from "@octogent/octoplan-protocol";
+import { useState } from "react";
+import { AnswerChips } from "./AnswerChips";
 import { AnswerList, type AnsweredItem } from "./AnswerList";
 import { RoundEditor } from "./RoundEditor";
 import { buildChains } from "./draft";
@@ -10,6 +12,11 @@ export type QuestionRoundCardProps = {
   answered?: readonly Answer[];
   onAnswer: (answers: Answer[]) => void;
   onRevise: (answer: Answer) => void;
+  /**
+   * v2 (D25): when answered, render one chip line per question ("header → answer" +
+   * modifier badge) until expanded. Default true; the stream's "expand all" passes false.
+   */
+  compact?: boolean;
 };
 
 export const QuestionRoundCard = ({
@@ -17,7 +24,10 @@ export const QuestionRoundCard = ({
   answered,
   onAnswer,
   onRevise,
+  compact = true,
 }: QuestionRoundCardProps) => {
+  // Set when a chip is expanded: which question to land on, and whether R opened its editor.
+  const [expanded, setExpanded] = useState<{ questionId: string; revise: boolean } | null>(null);
   const chains = buildChains(answered ?? []);
   const items: AnsweredItem[] = round.questions.flatMap((question) => {
     const chain = chains.get(question.id);
@@ -26,13 +36,50 @@ export const QuestionRoundCard = ({
   const roundNumber = round.index;
 
   if (items.length > 0) {
+    const showChips = compact && !expanded;
     return (
-      <section className="qc-card qc-card--answered" aria-label={`Round ${roundNumber} answers`}>
+      <section
+        className={
+          showChips ? "qc-card qc-card--answered qc-card--compact" : "qc-card qc-card--answered"
+        }
+        aria-label={`Round ${roundNumber} answers`}
+      >
         <header className="qc-card-head">
           <span className="qc-card-title">ROUND {roundNumber}</span>
-          <span className="qc-progress qc-progress--done">ANSWERED</span>
+          <span className="qc-card-tools">
+            {compact ? (
+              <button
+                type="button"
+                className="qc-button qc-button--ghost qc-button--small"
+                aria-expanded={!showChips}
+                onClick={() =>
+                  setExpanded(
+                    showChips ? { questionId: items[0]?.question.id ?? "", revise: false } : null,
+                  )
+                }
+              >
+                {showChips ? "Expand" : "Collapse"}
+              </button>
+            ) : null}
+            <span className="qc-progress qc-progress--done">ANSWERED</span>
+          </span>
         </header>
-        <AnswerList label={`Answered round ${roundNumber}`} items={items} onRevise={onRevise} />
+        {showChips ? (
+          <AnswerChips
+            label={`Answered round ${roundNumber}`}
+            items={items}
+            onExpand={(questionId, revise) => setExpanded({ questionId, revise })}
+          />
+        ) : (
+          <AnswerList
+            label={`Answered round ${roundNumber}`}
+            items={items}
+            onRevise={onRevise}
+            initialSelectedId={expanded?.questionId}
+            initialRevising={expanded?.revise}
+            autoFocus={expanded !== null}
+          />
+        )}
       </section>
     );
   }

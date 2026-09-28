@@ -36,6 +36,14 @@ export type Octoplan = {
   graphByRepo: PlanClientState["graphByRepo"];
   /** True from a sent `request-graph` until its `graph` reply (or a server error). */
   graphLoadingByRepo: PlanClientState["graphLoadingByRepo"];
+  // v2
+  /** Tentacle cards, drift and history per repo (replies to `request-overview`). */
+  overviewByRepo: PlanClientState["overviewByRepo"];
+  /** User-level conventions (~/.octoplan/CONVENTIONS.md). */
+  conventions: PlanClientState["conventions"];
+  /** Latest state of each long-running plan job, per repo. */
+  jobsByRepo: PlanClientState["jobsByRepo"];
+  handoffResultByRepo: PlanClientState["handoffResultByRepo"];
   activeSessionId: string | null;
   activeSession: Session | null;
   /** Repo of the active session, or the first repo with a plan when no session is active. */
@@ -114,6 +122,10 @@ export const OctoplanProvider = ({
       exportResults: state.exportResults,
       graphByRepo: state.graphByRepo,
       graphLoadingByRepo: state.graphLoadingByRepo,
+      overviewByRepo: state.overviewByRepo,
+      conventions: state.conventions,
+      jobsByRepo: state.jobsByRepo,
+      handoffResultByRepo: state.handoffResultByRepo,
       activeSessionId,
       activeSession,
       activeRepo,

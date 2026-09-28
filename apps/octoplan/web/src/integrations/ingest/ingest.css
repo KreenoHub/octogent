@@ -203,3 +203,8 @@
   padding-bottom: 0.5rem;
   background: var(--bg-canvas);
 }
+
+/* An open disagreement blocks apply: make it easy to spot in a long review. */
+.op-ig-item--blocking {
+  border-color: var(--term-red);
+}

@@ -6,94 +6,82 @@ Planning dimensions and how well the conversation has covered them.
 ## problem — Problem & why
 - status: covered
 - confidence: high
-- questions: Q1, Q2, Q3, Q5, Q6, Q7
 
-Each D5 pain now has concrete causes: re-explaining (new session, same-session drift, build→plan gap, cross-repo), text walls (prose, option descs, tool rows, end outputs), big picture (in-flight tentacles, undecided, evolution, drift).
+Three frictions left after v2: rigid entry (existing repo and topic only, outside material ignored), a manual Octogent start after handoff, and a cockpit that hides the workflow (D49).
 
 <!-- op:id=users -->
 ## users — Users
 - status: covered
 - confidence: high
-- questions: Q4, Q11
 
-One local human planner; Octogent tentacle workers consume only exported CONTEXT.md + todo.md, not docs/plan directly.
+Still one local human planner. Tentacle workers still consume only exported CONTEXT.md and todo.md (D10).
 
 <!-- op:id=scope -->
 ## scope — Scope & non-goals
 - status: covered
-- confidence: high
-- questions: Q8, Q9, Q10, Q12, Q13, Q14
+- confidence: medium
 
-Order: buried Qs + text walls, then memory, then big picture. Non-goals: upstream edits, multi-user, driving builds, mobile. Build decisions come back through Octoplan's harvest; board is scoped to this repo.
+In scope: two entry paths, import with a review, Run Octogent, the stepper and next-action bar, and visible buttons. Out: git URLs (G2), steering workers, process supervision, upstream edits.
 
 <!-- op:id=flows -->
 ## flows — Core flows
 - status: covered
-- confidence: high
-- questions: Q15, Q16, Q17, Q18, Q19, Q20, Q21, Q22, Q23, Q24
+- confidence: medium
 
-Answer via dock → answered round collapses to chips; session start digest + recap every ~3 rounds; harvest → needs-attention accept/reject; G → tentacle cards → graph drill-down.
+Home → new (create folder → Interview) or import (sources → ingest pass → Understand review → Apply → gap-focused Interview) → Goal → Stages → Hand off → Run Octogent → Build. When Interview counts as done is open (G3).
 
 <!-- op:id=integrations -->
 ## integrations — Integrations
 - status: covered
 - confidence: high
-- questions: Q25, Q12, Q39, Q40
 
-Octogent todo.md read from disk; managed-block export with D-id stamps; fork-PR fix; live export verified against a running Octogent; harvest reads git on octogent/* branches.
+The Octogent CLI (`octogent init`, `octogent`), runtime.json under ~/.octogent/projects/<id>/state/, and OS terminals (wt/cmd, osascript, x-terminal-emulator) (D59–D61).
 
 <!-- op:id=ux -->
 ## ux — UX
 - status: covered
-- confidence: high
-- questions: Q26, Q27, Q28, Q48, Q49
+- confidence: medium
 
-Dock, chips, prose digest, grouped tool rows, clamped descriptions, Tentacles header button, pixel tentacle cards, drift badges, History tab.
+Stepper on top, the 3-pane cockpit kept, the centre following the step, one next action at the bottom, and hotkey features on buttons (D62–D65). Screen-level layout is settled in wave 8.
 
 <!-- op:id=data -->
 ## data — Data
-- status: covered
-- confidence: high
-- questions: Q29, Q30, Q31, Q32, Q33, Q34, Q35
+- status: partial
+- confidence: medium
 
-HARVEST.md H-records filled by a headless Claude pass; CONVENTIONS.md C-records; D-ids stamped in todos and commits; session replay with orphaned rounds answered as a user turn; capped title digest.
+New file docs/plan/INGEST.md and pasted sources in docs/plan/sources/. Which file kinds ingest reads is open (G4).
 
 <!-- op:id=architecture -->
-## architecture — Architecture & stack
+## architecture — Architecture
 - status: covered
-- confidence: high
-- questions: Q36, Q37, Q38
+- confidence: medium
 
-Same stack and six tentacles; contracts-first octopus commit; pure digest builder in protocol; harvest runs as a headless locked-down SDK query; persistence via the session log + SDK resume.
+deriveWorkflow is a pure function in octoplan-protocol; ingest reuses the headless runner with `additionalDirectories`; the launcher is an injected module. Ingest caps are open (G5).
 
 <!-- op:id=risks -->
 ## risks — Risks
 - status: covered
 - confidence: medium
-- questions: Q41, Q44
 
-R1–R4 have mitigations; mode prompt drift is closed by gate runs. R4 has no automated gate check (the user didn't pick it). macOS PTY stays out (Windows only).
+R6–R10.
 
 <!-- op:id=success -->
-## success — Success metrics & DoD
+## success — Success criteria
 - status: covered
 - confidence: high
-- questions: Q42, Q43, Q44
 
-e2e:v2 gate (screenshots, restart recovery, harvest+drift, 3 mode runs, live export) plus one week of real use without terminal fallback.
+The e2e:v3 gate, plus a live Windows launch, plus the next real project started from the home screen (DOD1–DOD11).
 
 <!-- op:id=ops -->
-## ops — Ops & deploy
+## ops — Ops
 - status: covered
 - confidence: high
-- questions: Q45
 
-Local pnpm dev, 127.0.0.1, no deploy; ~/.octoplan for user-level files; persistence survives reloads.
+Unchanged: local pnpm dev. The octogent CLI must be on PATH for Run Octogent (D59).
 
 <!-- op:id=timeline -->
-## timeline — Timeline & budget
-- status: covered
-- confidence: medium
-- questions: Q46, Q47
+## timeline — Timeline
+- status: partial
+- confidence: low
 
-Waves 3/4/5 (focus, memory, overview) within ~1 week, then a week of real use. The one-week pace is ambitious for harvest + drift.
+Contracts, then waves 6, 7 and 8 (D67). No date set; wave 7 (import) is the largest.

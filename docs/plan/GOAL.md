@@ -1,41 +1,39 @@
-# Goal — Octoplan v2 — fix the friction found in real use
+# Goal — Octoplan v3 — start anywhere, launch Octogent, see the way
 
 ## Why
 
-In real use, all four v1 pain points came back: questions buried under reply prose, walls of text (prose, option descriptions, tool rows, the branch view), decisions re-explained across sessions, and no at-a-glance picture of what's happening across tentacles. If v2 doesn't fix them, the user drifts back to terminal chat and the plan→Octogent handoff goes unused.
+v2 fixed the friction inside a session, but the edges of the workflow are still rough. Every plan has to start from an existing repo and a topic, and whatever the user already wrote (an idea, notes, half a plan, a built project) is ignored unless it sits in docs/plan. The handoff ends at a link to a guessed port, so Octogent has to be started by hand. And the cockpit hides the workflow behind hotkeys, so the user can't tell where they are or what to do next. If v3 doesn't fix these, planning keeps starting in terminal chat and the handoff keeps stalling.
 
 ## Goals
 
-- The pending question round is always visible in a docked answer panel and survives server restarts (D14, D29, D30)
-- Conversation stream is compact: one-line prose digests, answer chips, grouped tool rows, clamped option descriptions (D15, D19, D25, D43)
-- Claude never needs decisions re-explained: capped plan digest at session start and every ~3 rounds, plus user-level conventions (D16, D18, D28, D32)
-- Build-time decisions flow back through a headless harvest into HARVEST.md candidates you accept or reject (D11, D17, D27, D31)
-- The G overlay answers 'what's going on across my tentacles' with pixel tentacle cards and opens from a visible header button (D21, D22, D23, D42)
-- The plan board shows a needs-attention list, ideas/stages/branches, a cross-session view, drift badges and a History tab (D9, D13, D24, D26)
-- Export preserves hand notes and stamps D-ids into todos; fork-PR badges are correct (D36, D37)
-- One click-through handoff turns the plan into Octogent tentacles, todos and an octopus prompt (D44, D45, D46, D47, D48)
+- A home screen offers two entry paths: a new project from an idea (Octoplan creates the folder) or an import of something that exists (D50, D51)
+- Import reads a main folder plus any extra files, folders and pasted text; it detects how mature the material is and extracts plan items with evidence (D52, D53, D54, D55)
+- A "What I understood" review lets the user keep, edit or drop every extracted item before anything is written to docs/plan (D56)
+- Deep planning after an import asks only about what's missing or weak (D57)
+- A "Run Octogent" button starts Octogent in a visible terminal in the handoff folder and finds its real port (D58, D59, D60, D61)
+- A seven-step stepper and a next-action bar guide the user from Start to Build, with the centre pane following the step (D62, D63, D64)
+- No feature is reachable only by a hotkey, and there's one path to Octogent (D65, D66)
 
 ## Non-goals
 
+- Cloning from a git URL or importing from web links (D52, G2)
+- Starting, steering or talking to tentacle workers; Octoplan only starts the Octogent dashboard (D12, D58)
+- Stopping or supervising the Octogent process after launch (D59)
 - Editing upstream apps/web, apps/api or packages/core (D8)
-- Multi-user, sharing or auth (D12)
-- Starting or steering tentacle workers from Octoplan (D12)
-- Mobile layout (D12)
-- Tentacle workers reading or writing docs/plan directly (D10, D11)
-- Cross-repo board aggregation (D13)
-- Live worker running/idle status from the Octogent API (D22)
+- Multi-user, sharing, auth or a mobile layout (D12)
+- Steps that block the user from opening a later step (D63)
 
 ## Definition of done
 
 - [ ] `pnpm --filter @octogent/octoplan test` and `pnpm --filter @octogent/octoplan-protocol test` pass, and `pnpm --filter @octogent/octoplan build` type-checks clean <!-- op:id=DOD1 status=unknown -->
-- [ ] Running `pnpm --filter @octogent/octoplan e2e:v2` passes and saves headless screenshots of the dock, answer chips, G tentacle cards and History tab to docs/octoplan/screenshots/ <!-- op:id=DOD2 status=unknown -->
-- [ ] In the e2e:v2 run, killing the server while a round is pending and restarting it shows the round again in the dock, and answering it produces Claude's next round <!-- op:id=DOD3 status=unknown -->
-- [ ] Starting a session on a repo with an existing DECISIONS.md shows a digest of at most 60 lines in the session log's first user turn <!-- op:id=DOD4 status=unknown -->
-- [ ] In the e2e:v2 run, a commit citing a D-id on an octogent/* branch flips that decision's drift badge to implemented, and a harvest run writes an H-record to docs/plan/HARVEST.md <!-- op:id=DOD5 status=unknown -->
-- [ ] Exporting to a running Octogent creates the tentacle, writes todo lines stamped with D-ids, and leaves hand-written text outside the octoplan markers in CONTEXT.md unchanged <!-- op:id=DOD6 status=unknown -->
-- [ ] `gh pr list` output with a fork PR headed at main shows no PR badge on local main in the G overlay <!-- op:id=DOD7 status=unknown -->
-- [ ] e2e:v2 completes one live run each of Quick align, Brainstorm and Devil's advocate with every question arriving as a card <!-- op:id=DOD8 status=unknown -->
-- [ ] The cockpit header shows a 'Tentacles n/m' button whose counts match the checkboxes in .octogent/tentacles/*/todo.md, and clicking it opens G <!-- op:id=DOD9 status=unknown -->
-- [ ] After one week of real planning in Octoplan, the session files in docs/plan/sessions/ show the user's next project was planned there without falling back to terminal chat <!-- op:id=DOD10 status=unknown -->
-- [ ] In e2e:v2, Generate → Apply in the handoff wizard creates the proposed tentacles in the Octogent workspace, writes todos under the chosen heading with D-id stamps, writes docs/plan/HANDOFF.md and OCTOPUS.md, and leaves existing CONTEXT.md hand notes unchanged <!-- op:id=DOD11 status=unknown -->
-- [ ] Opening the wizard on a git worktree of a repo whose main checkout runs Octogent targets the main checkout's .octogent <!-- op:id=DOD12 status=unknown -->
+- [ ] Running `pnpm --filter @octogent/octoplan e2e:v3` passes and saves headless screenshots of the home screen, the Understand review and the stepper at each of the seven steps to docs/octoplan/screenshots/v3/ (D68) <!-- op:id=DOD2 status=unknown -->
+- [ ] In e2e:v3, "New project from an idea" with a temp parent folder creates `<parent>/<slug>` holding a git repo with one commit, README.md containing the idea and docs/plan/, and shows the first question card within the Interview step (D51) <!-- op:id=DOD3 status=unknown -->
+- [ ] In e2e:v3, importing the three-maturity fixture (one-line idea file, half-plan folder, built repo plus an outside spec) writes docs/plan/INGEST.md with status draft, a maturity for each source, at least one found item quoting its source path, and one "Sources disagree on …" gap (D53, D54, D55) <!-- op:id=DOD4 status=unknown -->
+- [ ] In e2e:v3, dropping one item and applying the review writes the kept items to DECISIONS.md, GOAL.md or GAPS.md with `source: import`, leaves the dropped one out, marks INGEST.md applied, and the first question round asks about an open gap rather than a kept decision (D56, D57) <!-- op:id=DOD5 status=unknown -->
+- [ ] `deriveWorkflow` unit tests show the expected current step for each of: a new empty project, an imported draft, a pending round, GOAL.md present, stages present, HANDOFF.md applied, and all handed-off todos ticked (D62) <!-- op:id=DOD6 status=unknown -->
+- [ ] In e2e:v3, "Run Octogent" on a workspace without `.octogent/project.json` runs `octogent init`, calls the terminal launcher with the workspace as its folder, then shows "Running :port" with the port read from runtime.json, and a retried handoff Apply creates the tentacles (D60, D61) <!-- op:id=DOD7 status=unknown -->
+- [ ] With Octogent already running for the workspace, the button shows "Open Octogent" and clicking it starts no second process (checked in a unit test of the launcher) (D61) <!-- op:id=DOD8 status=unknown -->
+- [ ] On the user's Windows machine, clicking Run Octogent opens a visible terminal window running octogent in the handoff folder, and Octogent's dashboard opens in the browser (D59) <!-- op:id=DOD9 status=unknown -->
+- [ ] A grep of apps/octoplan/web/src shows every hotkey action (F, I, B, G, E) also bound to a visible button, and the board has no separate Export button (D65, D66) <!-- op:id=DOD10 status=unknown -->
+- [ ] After a week of real use, the user's next real project was started from the home screen (new or import) and handed off with Run Octogent, shown by its docs/plan/INGEST.md or README commit and its HANDOFF.md (D49) <!-- op:id=DOD11 status=unknown -->
+- [ ] Unit tests of the import inventory show .git, node_modules, lockfiles and binaries skipped and the entry cap applied, and an INGEST.md with found, inferred and disagreement items round-trips through its codec byte-for-byte (D53, D56) <!-- op:id=DOD12 status=unknown -->

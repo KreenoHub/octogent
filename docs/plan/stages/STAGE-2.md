@@ -1,97 +1,86 @@
-# Stage 2 — Starting a session on a repo with an existing DECISIONS.md…
+# Stage 2 — Wave 7 — entry and import
 
 ## Goal
 
-Make DOD4, DOD5, DOD6 true.
+Wave 7 (entry and import): home screen, new project folder, import sources, ingest pass, maturity, What I understood review, INGEST.md, gap-focused kickoff.
+
+## Decisions
+
+D16, D31, D45, D49, D50, D51, D52, D53, D54, D55, D56, D57
 
 ## Prompt
 
 ```text
-# Octoplan v2 — fix the friction found in real use — Stage 2 of 5: Starting a session on a repo with an existing DECISIONS.md…
+# Octoplan v3 — start anywhere, launch Octogent, see the way — Stage 2 of 4: Wave 7 — entry and import
 
-You are building one stage of "Octoplan v2 — fix the friction found in real use". Build only this stage, then stop at its testing checkpoint. This prompt is self-contained: you don't need any earlier chat.
+You are building one stage of "Octoplan v3 — start anywhere, launch Octogent, see the way". Build only this stage, then stop at its testing checkpoint. This prompt is self-contained: you don't need any earlier chat.
 
 ## Project context
-In real use, all four v1 pain points came back: questions buried under reply prose, walls of text (prose, option descriptions, tool rows, the branch view), decisions re-explained across sessions, and no at-a-glance picture of what's happening across tentacles. If v2 doesn't fix them, the user drifts back to terminal chat and the plan→Octogent handoff goes unused.
+v2 fixed the friction inside a session, but the edges of the workflow are still rough. Every plan has to start from an existing repo and a topic, and whatever the user already wrote (an idea, notes, half a plan, a built project) is ignored unless it sits in docs/plan. The handoff ends at a link to a guessed port, so Octogent has to be started by hand. And the cockpit hides the workflow behind hotkeys, so the user can't tell where they are or what to do next. If v3 doesn't fix these, planning keeps starting in terminal chat and the handoff keeps stalling.
 
 Goals:
-- The pending question round is always visible in a docked answer panel and survives server restarts (D14, D29, D30)
-- Conversation stream is compact: one-line prose digests, answer chips, grouped tool rows, clamped option descriptions (D15, D19, D25, D43)
-- Claude never needs decisions re-explained: capped plan digest at session start and every ~3 rounds, plus user-level conventions (D16, D18, D28, D32)
-- Build-time decisions flow back through a headless harvest into HARVEST.md candidates you accept or reject (D11, D17, D27, D31)
-- The G overlay answers 'what's going on across my tentacles' with pixel tentacle cards and opens from a visible header button (D21, D22, D23, D42)
-- The plan board shows a needs-attention list, ideas/stages/branches, a cross-session view, drift badges and a History tab (D9, D13, D24, D26)
-- Export preserves hand notes and stamps D-ids into todos; fork-PR badges are correct (D36, D37)
+- A home screen offers two entry paths: a new project from an idea (Octoplan creates the folder) or an import of something that exists (D50, D51)
+- Import reads a main folder plus any extra files, folders and pasted text; it detects how mature the material is and extracts plan items with evidence (D52, D53, D54, D55)
+- A "What I understood" review lets the user keep, edit or drop every extracted item before anything is written to docs/plan (D56)
+- Deep planning after an import asks only about what's missing or weak (D57)
+- A "Run Octogent" button starts Octogent in a visible terminal in the handoff folder and finds its real port (D58, D59, D60, D61)
+- A seven-step stepper and a next-action bar guide the user from Start to Build, with the centre pane following the step (D62, D63, D64)
+- No feature is reachable only by a hotkey, and there's one path to Octogent (D65, D66)
 
 Non-goals (don't build these):
+- Cloning from a git URL or importing from web links (D52, G2)
+- Starting, steering or talking to tentacle workers; Octoplan only starts the Octogent dashboard (D12, D58)
+- Stopping or supervising the Octogent process after launch (D59)
 - Editing upstream apps/web, apps/api or packages/core (D8)
-- Multi-user, sharing or auth (D12)
-- Starting or steering tentacle workers from Octoplan (D12)
-- Mobile layout (D12)
-- Tentacle workers reading or writing docs/plan directly (D10, D11)
-- Cross-repo board aggregation (D13)
-- Live worker running/idle status from the Octogent API (D22)
+- Multi-user, sharing, auth or a mobile layout (D12)
+- Steps that block the user from opening a later step (D63)
 
 ## Where you are
 Stages 1–1 are done and tested:
-1. `pnpm --filter @octogent/octoplan test` and `pnpm --filter…
+1. Wave 6 — launch
 Build on them; don't redo or refactor them unless this stage needs it.
 
 ## Build this stage
-Make these definition-of-done items true, and only these:
-- DOD4: Starting a session on a repo with an existing DECISIONS.md shows a digest of at most 60 lines in the session log's first user turn
-- DOD5: In the e2e:v2 run, a commit citing a D-id on an octogent/* branch flips that decision's drift badge to implemented, and a harvest run writes an H-record to docs/plan/HARVEST.md
-- DOD6: Exporting to a running Octogent creates the tentacle, writes todo lines stamped with D-ids, and leaves hand-written text outside the octoplan markers in CONTEXT.md unchanged
+Wave 7 (entry and import). Build these, and only these:
+- home screen
+- new project folder
+- import sources
+- ingest pass
+- maturity
+- What I understood review
+- INGEST.md
+- gap-focused kickoff
+
+They serve these goals:
+- A home screen offers two entry paths: a new project from an idea (Octoplan creates the folder) or an import of something that exists (D50, D51)
+- Import reads a main folder plus any extra files, folders and pasted text; it detects how mature the material is and extracts plan items with evidence (D52, D53, D54, D55)
+- A "What I understood" review lets the user keep, edit or drop every extracted item before anything is written to docs/plan (D56)
+- Deep planning after an import asks only about what's missing or weak (D57)
+
+Definition-of-done items this wave makes true:
+- DOD12: Unit tests of the import inventory show .git, node_modules, lockfiles and binaries skipped and the entry cap applied, and an INGEST.md with found, inferred and disagreement items round-trips through its codec byte-for-byte (D53, D56)
 
 ## Decisions this stage relies on
-- D1 — v2 targets all four D5 pain points again
-- D2 — Live question round must never scroll away under reply text
-- D3 — Octogent agents are first-class consumers of the plan
-- D4 — Decision memory must hold in every context
-- D5 — Anti-wall-of-text applies to all four surfaces
-- D6 — Big picture must answer four questions at a glance
-- D7 — First slice: buried questions + wall of text
-- D8 — Non-goal: editing upstream Octogent apps
-- D9 — Plan board additions
-- D10 — Agents consume exported CONTEXT.md + todo.md only
-- D11 — Octoplan harvests build-time decisions; agents stay read-only
-- D12 — Non-goals: multi-user, driving builds, mobile
-- D13 — Cross-session board = all sessions in the current repo
-- D15 — Between-round prose collapses to a one-line digest
 - D16 — Server injects a plan digest into every session's first turn
-- D17 — Harvest candidates appear in the needs-attention list
-- D18 — Decision recap injected every ~3 rounds
-- D19 — Tool calls collapse to one grouped row per turn
-- D20 — Tentacle overview lives in the G overlay
-- D21 — G overlay: tentacle summary first, commit graph as drill-down
-- D22 — Tentacle progress read from .octogent/tentacles/*/todo.md on disk
-- D23 — Tentacle cards: progress bar + status lights
-- D24 — Drift badges on decisions + a History tab on the board
-- D25 — Answered rounds collapse to answer chips
-- D26 — Drift is computed from decision ids in todos and commits
-- D27 — Harvest candidates stored in docs/plan/HARVEST.md
-- D28 — User-level conventions in ~/.octoplan/CONVENTIONS.md
-- D29 — Sessions persist and replay across server restarts
-- D30 — Orphaned rounds are restored in the dock and answered as a user turn
 - D31 — Harvest uses a short headless read-only Claude pass
-- D32 — Digest = ids + titles + status, capped ~60 lines
-- D33 — v2 reuses the six v1 tentacles
-- D34 — Digest builder is a pure function in octoplan-protocol
-- D35 — v2 contracts seeded first by the octopus
-- D36 — Export rewrites only an Octoplan-managed block in CONTEXT.md
-- D37 — Fix fork-PR badges; live-verify export against a running Octogent
-- D38 — Success = v2 live gate passes + a week of real use
-- D39 — v2 live gate contents
-- D40 — Ops unchanged: local pnpm dev
-- D41 — Three waves by pain point, all within ~1 week
-- D42 — "Tentacles n/m" header button opens G
-- D43 — Option descriptions clamp to one line
-Follow these decisions. If one turns out to be wrong, stop and say so instead of working around it.
+- D45 — Claude proposes the tentacle split in a headless pass
+- D49 — v3 targets three frictions: entry, launch, guidance
+- D50 — A home screen with two entry paths
+- D51 — "New from idea" creates the project folder
+- D52 — Import takes a main folder plus any extra sources
+- D53 — Ingestion is one headless read-only pass over an inventory
+- D54 — Ingest detects how mature the material is
+- D55 — Ingest extracts plan items with evidence
+- D56 — "What I understood" review before anything is written
+- D57 — After import, deep planning starts from what's missing
+Follow these decisions (the rest are in docs/plan/DECISIONS.md). If one turns out to be wrong, stop and say so instead of working around it.
 
 ## Done when
-- [ ] DOD4: Starting a session on a repo with an existing DECISIONS.md shows a digest of at most 60 lines in the session log's first user turn
-- [ ] DOD5: In the e2e:v2 run, a commit citing a D-id on an octogent/* branch flips that decision's drift badge to implemented, and a harvest run writes an H-record to docs/plan/HARVEST.md
-- [ ] DOD6: Exporting to a running Octogent creates the tentacle, writes todo lines stamped with D-ids, and leaves hand-written text outside the octoplan markers in CONTEXT.md unchanged
+- [ ] DOD12: Unit tests of the import inventory show .git, node_modules, lockfiles and binaries skipped and the entry cap applied, and an INGEST.md with found, inferred and disagreement items round-trips through its codec byte-for-byte (D53, D56)
+- [ ] A home screen offers two entry paths: a new project from an idea (Octoplan creates the folder) or an import of something that exists (D50, D51)
+- [ ] Import reads a main folder plus any extra files, folders and pasted text; it detects how mature the material is and extracts plan items with evidence (D52, D53, D54, D55)
+- [ ] A "What I understood" review lets the user keep, edit or drop every extracted item before anything is written to docs/plan (D56)
+- [ ] Deep planning after an import asks only about what's missing or weak (D57)
 - [ ] The project's existing tests and type-check still pass.
 
 ## Testing checkpoint

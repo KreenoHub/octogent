@@ -2,7 +2,7 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { groupSessionsByRepo, normalizeRepoPath } from "../../web/src/app/sessionView";
-import { session } from "./fixtures";
+import { plan, session } from "./fixtures";
 import { renderCockpit } from "./renderCockpit";
 
 describe("new session dialog", () => {
@@ -105,6 +105,46 @@ describe("session sidebar", () => {
     expect(alphaOne).not.toHaveAttribute("aria-current");
   });
 
+  it("lists a project that only has a plan, and opening it moves the highlight off other sessions", () => {
+    const { emit } = renderCockpit();
+    emit(
+      {
+        type: "sessions",
+        sessions: [session({ id: "old", title: "Old test", repoPath: "C:\\tmp\\habit" })],
+      },
+      {
+        type: "plan",
+        repoPath: "C:\\repos\\presentor",
+        plan: plan({
+          ingest: {
+            status: "draft",
+            createdAt: "2026-09-28T10:00:00.000Z",
+            title: "presentor",
+            why: "",
+            maturity: "partial-plan",
+            maturityReasons: "",
+            coverage: [],
+            sources: [],
+            items: [],
+          },
+        }),
+      },
+    );
+    const sidebar = screen.getByRole("complementary", { name: "Projects and sessions" });
+    const oldOne = within(sidebar).getByRole("button", { name: /^Old test/ });
+    const presentor = within(sidebar).getByRole("region", { name: "presentor" });
+    const open = within(presentor).getByRole("button", { name: /No sessions yet/ });
+    expect(open).toHaveTextContent("Import waiting for review");
+
+    expect(oldOne).toHaveAttribute("aria-current", "true");
+    fireEvent.click(open);
+    expect(open).toHaveAttribute("aria-current", "true");
+    expect(oldOne).not.toHaveAttribute("aria-current");
+    fireEvent.click(oldOne);
+    expect(oldOne).toHaveAttribute("aria-current", "true");
+    expect(open).not.toHaveAttribute("aria-current");
+  });
+
   it("maps starting to the running dot", () => {
     const { emit } = renderCockpit();
     emit({ type: "session-updated", session: session({ status: "starting" }) });
@@ -124,5 +164,16 @@ describe("session view helpers", () => {
       session({ id: "b", repoPath: "D:\\y\\" }),
     ]);
     expect(groups.map((g) => g.name)).toEqual(["x", "y"]);
+  });
+
+  it("adds plan-only repos after the ones with sessions, matching paths case-insensitively", () => {
+    const groups = groupSessionsByRepo(
+      [session({ id: "a", repoPath: "C:\\x" })],
+      ["C:\\X\\", "C:\\plan-only"],
+    );
+    expect(groups.map((g) => [g.name, g.sessions.length])).toEqual([
+      ["x", 1],
+      ["plan-only", 0],
+    ]);
   });
 });

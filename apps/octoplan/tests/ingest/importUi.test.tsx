@@ -2,6 +2,7 @@
 import type {
   ClientEvent,
   IngestDraft,
+  IngestItem,
   PlanSnapshot,
   ServerEvent,
 } from "@octogent/octoplan-protocol";
@@ -10,11 +11,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFakeTransport } from "../../web/src/app/transport";
 import { OctoplanProvider, useOctoplan } from "../../web/src/app/useOctoplan";
 import { CockpitLayout } from "../../web/src/components/CockpitLayout";
-import {
-  HomeScreen,
-  recentProjects,
-  suggestName,
-} from "../../web/src/components/home/HomeScreen";
+import { HomeScreen, recentProjects, suggestName } from "../../web/src/components/home/HomeScreen";
 import {
   INGEST_SAVE_DEBOUNCE_MS,
   IngestReview,
@@ -226,6 +223,45 @@ describe("What I understood (D56)", () => {
     const [event] = sent("apply-ingest") as Array<Extract<ClientEvent, { type: "apply-ingest" }>>;
     expect(event?.draft?.items.find((i) => i.id === "I4")?.resolution).toBe("parked");
     expect(event?.draft?.items.find((i) => i.id === "I2")?.keep).toBe(false);
+  });
+
+  it("jumps to the blocking disagreement, counts what's left and parks them all at once", () => {
+    const second = {
+      ...(draft().items[3] as IngestItem),
+      id: "I5",
+      title: "Sources disagree on sync",
+    };
+    const { emit, sent } = mount(<IngestReview repoPath={REPO} onClose={() => {}} />);
+    emit({
+      type: "plan",
+      repoPath: REPO,
+      plan: snapshot(draft({ items: [...draft().items, second] })),
+    });
+    const gap = screen.getByRole("article", { name: "I4 Sources disagree on storage" });
+    const other = screen.getByRole("article", { name: "I5 Sources disagree on sync" });
+    expect(gap).toHaveClass("op-ig-item--blocking");
+    expect(other).toHaveClass("op-ig-item--blocking");
+    expect(screen.getByText(/\(2 disagreements left\)/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Go to I4" }));
+    expect(within(gap).getByRole("combobox")).toHaveFocus();
+
+    fireEvent.change(within(gap).getByRole("combobox"), { target: { value: "resolved" } });
+    expect(gap).not.toHaveClass("op-ig-item--blocking");
+    expect(screen.getByRole("button", { name: "Go to I5" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Park all 1" }));
+    expect(screen.queryByRole("button", { name: /^Go to/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Park all/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Apply 4 items/ }));
+    const [event] = sent("apply-ingest") as Array<Extract<ClientEvent, { type: "apply-ingest" }>>;
+    expect(event?.draft?.items.map((i) => [i.id, i.resolution ?? null])).toEqual([
+      ["I1", null],
+      ["I2", null],
+      ["I3", null],
+      ["I4", "resolved"],
+      ["I5", "parked"],
+    ]);
   });
 
   it("autosaves edits after the debounce", () => {

@@ -41,6 +41,23 @@ export const reviewProblem = (draft: IngestDraft): string | null => {
   return null;
 };
 
+/** Kept disagreements nobody has resolved or parked yet; each one blocks apply. */
+export const openDisagreements = (draft: IngestDraft): IngestItem[] =>
+  draft.items.filter((item) => ingestItemProblem(item) !== null);
+
+/** The item behind reviewProblem, so the footer can jump to it; null when nothing blocks. */
+export const blockingItemId = (draft: IngestDraft): string | null =>
+  draft.items.find((item) => (item.keep && !item.title.trim()) || ingestItemProblem(item))?.id ??
+  null;
+
+/** Parks every open disagreement: each becomes a question in the interview. */
+export const parkOpenDisagreements = (draft: IngestDraft): IngestDraft => ({
+  ...draft,
+  items: draft.items.map((item) =>
+    ingestItemProblem(item) ? { ...item, resolution: "parked" as const } : item,
+  ),
+});
+
 /** How many items apply will write (kept and not already in the plan). */
 export const writeCount = (draft: IngestDraft) =>
   draft.items.filter((item) => item.keep && !item.inPlan).length;

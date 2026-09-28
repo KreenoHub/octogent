@@ -1,10 +1,24 @@
 // D56 "What I understood": the import draft (docs/plan/INGEST.md) for the user to keep, edit or
 // drop item by item before anything reaches the plan. Edits autosave; Apply sends the draft as
 // shown, and the server writes the plan and starts the gap-focused interview (D57).
-import { type IngestDraft, type IngestItem, MATURITY_LABELS } from "@octogent/octoplan-protocol";
+import {
+  type IngestDraft,
+  type IngestItem,
+  MATURITY_LABELS,
+  ingestItemProblem,
+} from "@octogent/octoplan-protocol";
 import { useCallback, useEffect, useState } from "react";
 import { useOctoplan } from "../../app/useOctoplan";
-import { KIND_LABELS, itemsByKind, reviewProblem, updateItem, writeCount } from "./ingestDraft";
+import {
+  KIND_LABELS,
+  blockingItemId,
+  itemsByKind,
+  openDisagreements,
+  parkOpenDisagreements,
+  reviewProblem,
+  updateItem,
+  writeCount,
+} from "./ingestDraft";
 import "./ingest.css";
 
 /** Review edits are saved this long after the last keystroke. */
@@ -95,7 +109,18 @@ export const IngestReview = ({ repoPath, onClose }: { repoPath: string; onClose:
   }
 
   const problem = reviewProblem(draft);
+  const blocker = blockingItemId(draft);
+  const open = openDisagreements(draft).length;
   const count = writeCount(draft);
+  // The blocking item can sit anywhere in a long review: bring it into view, ready to settle.
+  const goTo = (id: string) => {
+    const article = document.getElementById(itemAnchor(id));
+    article?.scrollIntoView?.({ block: "center" });
+    const target =
+      article?.querySelector<HTMLElement>(".op-ig-resolution select") ??
+      article?.querySelector<HTMLElement>(".op-ig-title");
+    target?.focus();
+  };
   const apply = () => {
     if (problem) return;
     if (sendClientEvent({ type: "apply-ingest", repoPath, draft })) {
@@ -177,7 +202,23 @@ export const IngestReview = ({ repoPath, onClose }: { repoPath: string; onClose:
       <footer className="op-ig-foot">
         <output className={problem ? "op-ig-problem" : "op-ig-status"}>
           {problem ?? (dirty ? "Unsaved changes…" : "Saved in docs/plan/INGEST.md")}
+          {open > 1 ? ` (${open} disagreements left)` : ""}
         </output>
+        {blocker ? (
+          <button type="button" className="op-button" onClick={() => goTo(blocker)}>
+            Go to {blocker}
+          </button>
+        ) : null}
+        {open > 0 ? (
+          <button
+            type="button"
+            className="op-button"
+            title="Each one becomes a question in the interview"
+            onClick={() => edit(parkOpenDisagreements(draft))}
+          >
+            Park all {open}
+          </button>
+        ) : null}
         {applying ? (
           <output className="op-hw-spinner">
             <span className="op-hw-spinner-glyph" aria-hidden="true" />
@@ -202,6 +243,8 @@ export const IngestReview = ({ repoPath, onClose }: { repoPath: string; onClose:
   );
 };
 
+const itemAnchor = (id: string) => `op-ig-item-${id}`;
+
 const ItemRow = ({
   item,
   onChange,
@@ -210,7 +253,10 @@ const ItemRow = ({
   onChange: (patch: Partial<Omit<IngestItem, "id">>) => void;
 }) => (
   <article
-    className={`op-ig-item${item.keep ? "" : " op-ig-item--dropped"}`}
+    id={itemAnchor(item.id)}
+    className={`op-ig-item${item.keep ? "" : " op-ig-item--dropped"}${
+      ingestItemProblem(item) ? " op-ig-item--blocking" : ""
+    }`}
     aria-label={`${item.id} ${item.title}`}
   >
     <div className="op-ig-item-head">

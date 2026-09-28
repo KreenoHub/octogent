@@ -53,6 +53,9 @@ const JOB_LABELS: Record<PlanJob["job"], string> = {
   harvest: "Harvesting decisions",
   "handoff-generate": "Drafting handoff",
   "handoff-apply": "Applying handoff",
+  "create-project": "Creating project",
+  ingest: "Importing",
+  "ingest-apply": "Writing the import",
 };
 
 /** Running plan jobs for the repo as one spinner line; finished ones already toast. */

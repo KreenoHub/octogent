@@ -1,0 +1,76 @@
+/* Run Octogent panel (D58–D61): Octogent tokens, same controls as the handoff wizard. */
+
+.op-og {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.6rem 0.7rem;
+  font-family: var(--font-main);
+  font-size: 0.78rem;
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+}
+
+.op-og-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.op-og-row a {
+  text-decoration: none;
+}
+
+.op-og-chip {
+  padding: 0.15rem 0.45rem;
+  font-size: 0.68rem;
+  letter-spacing: var(--control-letter-spacing);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  border: 1px solid currentColor;
+}
+
+.op-og-chip--running {
+  color: var(--term-green);
+}
+
+.op-og-chip--starting,
+.op-og-chip--not-responding {
+  color: var(--term-warning);
+}
+
+.op-og-chip--not-initialized,
+.op-og-chip--not-running {
+  color: var(--text-secondary);
+}
+
+.op-og-message,
+.op-og-where,
+.op-og-hint {
+  margin: 0;
+}
+
+.op-og-where,
+.op-og-hint {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.op-og-manual {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.op-og-manual code {
+  padding: 0.3rem 0.5rem;
+  background: var(--terminal-bg);
+  border: 1px solid var(--border-subtle);
+  overflow-wrap: anywhere;
+}
+
+.op-og-copy-note {
+  font-size: 0.72rem;
+  color: var(--term-green);
+}

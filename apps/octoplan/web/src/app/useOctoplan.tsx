@@ -46,9 +46,17 @@ export type Octoplan = {
   handoffResultByRepo: PlanClientState["handoffResultByRepo"];
   activeSessionId: string | null;
   activeSession: Session | null;
-  /** Repo of the active session, or the first repo with a plan when no session is active. */
+  /**
+   * A repo chosen without a session (a running import, D56), else the active session's repo,
+   * else the first repo with a plan.
+   */
   activeRepo: string | null;
   setActiveSession: (sessionId: string | null) => void;
+  /** Show a repo that has no session yet; choosing a session clears it. */
+  setActiveRepo: (repoPath: string | null) => void;
+  /** v3 (D50): the home screen with the two entry paths is showing. */
+  home: boolean;
+  setHome: (home: boolean) => void;
   /** Validates with clientEventSchema; invalid events are dropped, logged and return false. */
   sendClientEvent: (event: ClientEvent) => boolean;
   /** Raw reducer state, for selectors in planClientReducer.ts. */
@@ -68,17 +76,34 @@ export const OctoplanProvider = ({
   const [state, dispatch] = useReducer(planClientReducer, initialPlanClientState);
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
   // `?session=<id>` preselects a session (bookmarks, links from other tools).
-  const [chosenSessionId, setActiveSession] = useState<string | null>(() =>
+  const [chosenSessionId, setChosenSessionId] = useState<string | null>(() =>
     typeof window === "undefined"
       ? null
       : new URLSearchParams(window.location.search).get("session"),
   );
+  const [chosenRepo, setActiveRepo] = useState<string | null>(null);
+  // null = not decided by the user yet: home shows while there are no sessions (D50).
+  const [homeChoice, setHome] = useState<boolean | null>(null);
+  const setActiveSession = useCallback((sessionId: string | null) => {
+    setActiveRepo(null);
+    setChosenSessionId(sessionId);
+  }, []);
 
   useEffect(
     () =>
       activeTransport.connect({
         onEvent: (event) => {
           if (event.type === "hello") setStatus("online");
+          // v3: the server moves the client that created a project or started an import.
+          if (event.type === "focus-repo") {
+            setActiveRepo(event.repoPath);
+            setHome(false);
+          }
+          if (event.type === "focus-session") {
+            setActiveRepo(null);
+            setChosenSessionId(event.sessionId);
+            setHome(false);
+          }
           dispatch(event);
         },
         onStatus: setStatus,
@@ -108,7 +133,9 @@ export const OctoplanProvider = ({
         ? chosenSessionId
         : (state.sessions[0]?.id ?? null);
     const activeSession = state.sessions.find((s) => s.id === activeSessionId) ?? null;
-    const activeRepo = activeSession?.repoPath ?? Object.keys(state.planByRepo)[0] ?? null;
+    const activeRepo =
+      chosenRepo ?? activeSession?.repoPath ?? Object.keys(state.planByRepo)[0] ?? null;
+    const home = homeChoice ?? (status === "online" && state.sessions.length === 0 && !chosenRepo);
     return {
       connection: { status, serverVersion: state.serverVersion },
       sessions: state.sessions,
@@ -130,10 +157,13 @@ export const OctoplanProvider = ({
       activeSession,
       activeRepo,
       setActiveSession,
+      setActiveRepo,
+      home,
+      setHome,
       sendClientEvent,
       state,
     };
-  }, [state, status, chosenSessionId, sendClientEvent]);
+  }, [state, status, chosenSessionId, chosenRepo, homeChoice, setActiveSession, sendClientEvent]);
 
   return <OctoplanContext.Provider value={value}>{children}</OctoplanContext.Provider>;
 };

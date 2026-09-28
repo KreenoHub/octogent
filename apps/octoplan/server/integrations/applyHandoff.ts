@@ -6,14 +6,13 @@ import { ensureTentacle, renderManagedBlock, toTodoLine, writeTentacle } from ".
 import type { ApplyHandoffInput, Exec } from "./types";
 import { resolveWorkspace } from "./workspace";
 
-export const DEFAULT_DECK_URL = "http://localhost:8787";
-
 const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
+/** `deckUrlFor(workspace)`: Octogent's real URL once known (D61), else undefined. */
 export const applyHandoff = async (
   exec: Exec,
   input: ApplyHandoffInput,
-  octogentUrl?: string,
+  deckUrlFor: (workspace: string) => Promise<string | undefined> = async () => undefined,
 ): Promise<HandoffResult> => {
   const workspace = await resolveWorkspace(exec, input.repoPath);
   const { plan, goal } = input;
@@ -70,6 +69,7 @@ export const applyHandoff = async (
   const failed = results.filter((r) => !r.ok);
   const created = results.filter((r) => r.created).length;
   const added = results.reduce((sum, r) => sum + r.added, 0);
+  const deckUrl = await deckUrlFor(workspace).catch(() => undefined);
   const summary = `${results.length - failed.length}/${results.length} tentacles written to ${workspace} (${created} created, ${added} todo${added === 1 ? "" : "s"} added)`;
   return {
     ok: failed.length === 0,
@@ -79,6 +79,6 @@ export const applyHandoff = async (
         : `${summary}. ${failed[0]?.tentacleId}: ${failed[0]?.message}`,
     workspace,
     tentacles: results,
-    deckUrl: octogentUrl ?? DEFAULT_DECK_URL,
+    ...(deckUrl ? { deckUrl } : {}),
   };
 };

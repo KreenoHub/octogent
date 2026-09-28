@@ -151,6 +151,8 @@ export const createIdeaRegistry = (options: IdeaRegistryOptions = {}): IdeaRegis
       });
     },
 
+    listRepos: () => readRepos(),
+
     async searchIdeas(query: string) {
       const repos = await readRepos();
       const perRepo = await Promise.all(

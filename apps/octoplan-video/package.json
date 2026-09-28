@@ -7,6 +7,7 @@
   "scripts": {
     "studio": "remotion studio src/index.ts",
     "render": "remotion render src/index.ts Tutorial ../../docs/octoplan/tutorial/octoplan-octogent-tutorial.mp4",
+    "render:v3": "remotion render src/index.ts TutorialV3 ../../docs/octoplan/tutorial/octoplan-v3-tutorial.mp4 --crf=30 --x264-preset=slow",
     "still": "remotion still src/index.ts Tutorial",
     "capture": "node tools/captureUi.mjs",
     "build": "tsc -p tsconfig.json --noEmit"

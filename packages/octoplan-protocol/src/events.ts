@@ -25,6 +25,7 @@ import {
   overviewSchema,
   sessionLogSummarySchema,
 } from "./v2";
+import { ingestDraftSchema, octogentStatusSchema } from "./v3";
 
 export const PROTOCOL_VERSION = 1;
 
@@ -43,11 +44,20 @@ export const planSnapshotSchema = z.object({
   sessionLogs: z.array(sessionLogSummarySchema).optional(),
   /** docs/plan/HANDOFF.md (D46), or null when there is none. */
   handoff: handoffPlanSchema.nullable().optional(),
+  // v3
+  /** docs/plan/INGEST.md (D56), or null when there is none. */
+  ingest: ingestDraftSchema.nullable().optional(),
 });
 export type PlanSnapshot = z.infer<typeof planSnapshotSchema>;
 
 export const serverEventSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("hello"), protocolVersion: z.number(), serverVersion: z.string() }),
+  z.object({
+    type: z.literal("hello"),
+    protocolVersion: z.number(),
+    serverVersion: z.string(),
+    /** v3 (D51): the default parent folder for a new project. */
+    defaultProjectsDir: z.string().optional(),
+  }),
   z.object({ type: z.literal("sessions"), sessions: z.array(sessionSchema) }),
   z.object({ type: z.literal("session-updated"), session: sessionSchema }),
   z.object({ type: z.literal("block"), sessionId: z.string(), block: messageBlockSchema }),
@@ -86,7 +96,7 @@ export const serverEventSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("plan-job"),
     repoPath: z.string(),
-    job: z.enum(["harvest", "handoff-generate", "handoff-apply"]),
+    job: z.enum(["harvest", "handoff-generate", "handoff-apply", "create-project", "ingest", "ingest-apply"]),
     state: z.enum(["running", "done", "failed"]),
     message: z.string(),
   }),
@@ -95,6 +105,13 @@ export const serverEventSchema = z.discriminatedUnion("type", [
     repoPath: z.string(),
     result: handoffResultSchema,
   }),
+  // v3
+  /** Octogent's state for one repo (reply to request-octogent-status, and during a launch). */
+  z.object({ type: z.literal("octogent-status"), status: octogentStatusSchema }),
+  /** Sent to the client that started a project or an import: show this repo now. */
+  z.object({ type: z.literal("focus-repo"), repoPath: z.string() }),
+  /** Sent to the client whose action started this session: select it. */
+  z.object({ type: z.literal("focus-session"), sessionId: z.string() }),
 ]);
 export type ServerEvent = z.infer<typeof serverEventSchema>;
 
@@ -182,6 +199,36 @@ export const clientEventSchema = z.discriminatedUnion("type", [
     repoPath: z.string(),
     branchId: z.string(),
     gitBranch: z.string().min(1),
+  }),
+  // v3
+  z.object({ type: z.literal("request-octogent-status"), repoPath: z.string() }),
+  /** D58–D60: init if needed, open a terminal running `octogent`, then report until it's up. */
+  z.object({ type: z.literal("launch-octogent"), repoPath: z.string() }),
+  /** D51: create <parentDir>/<slug(name)>, git init, README with the idea, then interview. */
+  z.object({
+    type: z.literal("create-project"),
+    parentDir: z.string().min(1),
+    name: z.string().min(1),
+    idea: z.string().min(1),
+  }),
+  /** D52/D53: import a main folder plus extra files, folders and pasted text. */
+  z.object({
+    type: z.literal("start-import"),
+    mainPath: z.string().min(1),
+    extraPaths: z.array(z.string().min(1)),
+    pastes: z.array(z.string().min(1)),
+    gitInit: z.boolean(),
+  }),
+  /** Review edits (D56) saved to INGEST.md. */
+  z.object({ type: z.literal("save-ingest"), repoPath: z.string(), draft: ingestDraftSchema }),
+  /**
+   * D56/D57: write kept items to docs/plan, then start the gap-focused interview. `draft` is the
+   * review as the user left it; it's saved first, so a pending autosave can't race the apply.
+   */
+  z.object({
+    type: z.literal("apply-ingest"),
+    repoPath: z.string(),
+    draft: ingestDraftSchema.optional(),
   }),
 ]);
 export type ClientEvent = z.infer<typeof clientEventSchema>;

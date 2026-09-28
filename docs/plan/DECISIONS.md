@@ -590,7 +590,7 @@ The button targets the workspace from D48, the same one the handoff writes to. I
 - source: user answer 2026-09-28
 - depends-on: D58
 
-On Windows, Octoplan runs `wt.exe -d <dir> cmd /k octogent` when Windows Terminal is installed, and otherwise `cmd /c start "Octogent — <name>" /D <dir> cmd /k octogent`. On macOS it opens Terminal through osascript with `cd <dir> && octogent`. On Linux it uses `x-terminal-emulator` when present. When none works, it shows the command with a copy button. The process is detached: closing Octoplan leaves Octogent running, and there is no Stop button. If `octogent` isn't on PATH, the button shows how to install it instead.
+On Windows, Octoplan runs `cmd /c start "Octogent" cmd.exe /d /k octogent` with the workspace as the process's working directory, so the path is never re-parsed by a shell. Windows 11 opens it in Windows Terminal when that's the default terminal, so there's no separate `wt.exe` path. On macOS it opens Terminal through osascript with `cd <dir> && octogent`. On Linux it uses `x-terminal-emulator` when present. When none works, it shows the command with a copy button. The process is detached: closing Octoplan leaves Octogent running, and there is no Stop button. If `octogent` isn't on PATH, the button shows how to install it instead.
 
 <!-- op:id=D60 -->
 ## D60 — Octoplan runs `octogent init` first when needed
@@ -619,8 +619,8 @@ Octoplan reads the project id from `.octogent/project.json` and then `~/.octogen
 
 The steps are Start, Understand, Interview, Goal, Stages, Hand off and Build. A pure function in octoplan-protocol, `deriveWorkflow`, computes each step's state (done / current / ready / not-ready / skipped, with a one-line reason) from what's on disk and in the session:
 - Understand is done when INGEST.md is applied, and skipped for new projects.
-- Interview is done when every coverage dimension is at least partial and no round is pending (see G3).
-- Goal is done when GOAL.md exists.
+- Interview is done when every coverage dimension is at least partial and no round is pending (see G3), or when the goal is ready.
+- Goal is done when GOAL.md has at least one done-when item. An import writes GOAL.md without any, so "exists" isn't enough.
 - Stages is done when stages/STAGE-*.md exist.
 - Hand off is done when HANDOFF.md is applied.
 - Build is current while Octogent is running or tentacle todos exist, and done when every handed-off todo is ticked.
@@ -634,7 +634,8 @@ The current step is the first one that isn't done.
 - depends-on: D62
 
 A stepper runs across the top of the cockpit. The sidebar (projects and sessions) and the plan board keep their places. The centre pane shows the selected step:
-- Understand: the review (D56).
+- Start: opens the home screen (D50).
+- Understand: the review (D56), inline instead of a modal.
 - Interview: the conversation and the answer dock.
 - Goal: GOAL.md with its definition of done.
 - Stages: the stage list with its prompts.

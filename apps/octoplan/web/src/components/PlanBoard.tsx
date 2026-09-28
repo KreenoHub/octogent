@@ -8,7 +8,6 @@ import { ConventionsSection } from "./ConventionsSection";
 import { HistoryTab } from "./HistoryTab";
 import { IdeaSearch } from "./IdeaSearch";
 import { NeedsAttention } from "./NeedsAttention";
-import { StagesList } from "./StagesList";
 import { BrainstormSlot, CoverageSlot } from "./slots";
 
 type BoardRecord = {
@@ -105,13 +104,8 @@ const sessionRecords = (
 
 type Tab = "board" | "history";
 
-export const PlanBoard = ({
-  onExport,
-  onHandoff,
-}: {
-  onExport: () => void;
-  onHandoff: () => void;
-}) => {
+/** v3 (D63): stages, handoff and export moved into the workflow steps; the board shows the plan. */
+export const PlanBoard = () => {
   const {
     planByRepo,
     overviewByRepo,
@@ -148,15 +142,7 @@ export const PlanBoard = ({
 
   const [open, setOpen] = useState<Partial<Record<SectionName, boolean>>>({});
   const [tab, setTab] = useState<Tab>("board");
-  const [stagesRequestedFor, setStagesRequestedFor] = useState<string | null>(null);
   const brainstorm = activeSession?.mode === "brainstorm" ? activeSession : null;
-
-  const generateStages = () => {
-    if (!activeRepo) return;
-    if (sendClientEvent({ type: "generate-stages", repoPath: activeRepo })) {
-      setStagesRequestedFor(activeRepo);
-    }
-  };
 
   return (
     <aside className="op-pane" aria-label="Plan board">
@@ -181,24 +167,6 @@ export const PlanBoard = ({
         <HistoryTab overview={overview} />
       ) : (
         <>
-          <div className="op-board-actions">
-            <button
-              type="button"
-              className="op-button"
-              disabled={!activeRepo}
-              onClick={generateStages}
-            >
-              Stages
-            </button>
-            <button type="button" className="op-button" disabled={!activeRepo} onClick={onExport}>
-              Export to Octogent
-            </button>
-            {activeRepo && plan?.goal ? (
-              <button type="button" className="op-button op-button--primary" onClick={onHandoff}>
-                Hand off to Octogent
-              </button>
-            ) : null}
-          </div>
           {brainstorm && activeRepo ? (
             <BrainstormSlot
               ideas={plan?.ideas ?? []}
@@ -268,9 +236,6 @@ export const PlanBoard = ({
               );
             })}
           </ul>
-          {activeRepo ? (
-            <StagesList repoPath={activeRepo} requested={stagesRequestedFor === activeRepo} />
-          ) : null}
           <IdeaSearch />
           <ConventionsSection />
           <h2 className="op-pane-title">COVERAGE</h2>

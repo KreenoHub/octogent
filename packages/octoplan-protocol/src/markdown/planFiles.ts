@@ -37,6 +37,11 @@ export const PLAN_FILES = {
     path: "HANDOFF.md",
     preamble: "# Handoff to Octogent",
   },
+  // v3
+  ingest: {
+    path: "INGEST.md",
+    preamble: "# Import — what I understood",
+  },
   /** Plain markdown (the octopus coordinator prompt, D47); not a record file. */
   octopus: { path: "OCTOPUS.md", preamble: "" },
 } as const;
@@ -49,6 +54,8 @@ export const CONVENTIONS_PREAMBLE =
 
 export const SESSIONS_DIR = "sessions";
 export const STAGES_DIR = "stages";
+/** Pasted import text (D52), one file per paste. */
+export const SOURCES_DIR = "sources";
 
 export const sessionFileName = (date: string, slug: string) => `${date}-${slugify(slug)}.md`;
 export const stageFileName = (index: number) => `STAGE-${index}.md`;

@@ -178,7 +178,7 @@ export const TentacleCards = ({
             <p>No tentacles in this workspace yet.</p>
             <p>
               Tentacles are the folders under <code>.octogent/tentacles/</code>. Hand the plan off
-              to Octogent from the board (or create one in Octogent's Deck) and they show up here
+              to Octogent in the Hand off step (or create one in Octogent's Deck) and they show up here
               with their todo progress, branches and PRs.
             </p>
           </div>

@@ -1,0 +1,205 @@
+/* "What I understood" review (D56). Reuses the handoff wizard's spinner, labels and badges. */
+
+.op-ig {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  max-height: calc(100vh - 8rem);
+  font-family: var(--font-main);
+  font-size: 0.8rem;
+  color: var(--text-primary);
+}
+
+.op-ig--running {
+  grid-template-rows: none;
+}
+
+.op-ig-head {
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.op-ig-maturity {
+  padding: 0.15rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: var(--control-letter-spacing);
+  text-transform: uppercase;
+  color: var(--accent-primary);
+  border: 1px solid currentColor;
+}
+
+.op-ig-maturity--built,
+.op-ig-maturity--detailed-plan {
+  color: var(--term-green);
+}
+
+.op-ig-maturity--partial-plan {
+  color: var(--term-warning);
+}
+
+.op-ig-reasons {
+  flex: 1;
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.op-ig-body {
+  display: grid;
+  gap: 0.9rem;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.op-ig-sources {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.op-ig-sources li {
+  display: flex;
+  gap: 0.4rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.op-ig-sources code {
+  overflow-wrap: anywhere;
+}
+
+.op-ig-note,
+.op-ig-skipped {
+  flex-basis: 100%;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.op-ig-skipped {
+  color: var(--term-warning);
+}
+
+.op-ig-group {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.op-ig-item {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border-subtle);
+}
+
+.op-ig-item--dropped {
+  opacity: 0.55;
+}
+
+.op-ig-item-head {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.op-ig-keep {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.op-ig-title {
+  flex: 1;
+  min-width: 12rem;
+  padding: 0.25rem 0.4rem;
+  font-family: var(--font-main);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: var(--terminal-bg);
+  border: 1px solid var(--border-subtle);
+}
+
+.op-ig-text {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.3rem 0.45rem;
+  font-family: var(--font-main);
+  font-size: 0.78rem;
+  color: var(--text-primary);
+  background: var(--terminal-bg);
+  border: 1px solid var(--border-subtle);
+  resize: vertical;
+}
+
+.op-ig-title:focus,
+.op-ig-text:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.op-ig-tentative {
+  color: var(--term-warning);
+}
+
+.op-ig-evidence {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.op-ig-evidence q {
+  margin-left: 0.4rem;
+  font-style: italic;
+}
+
+.op-ig-resolution select {
+  max-width: 100%;
+}
+
+.op-ig-foot {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.op-ig-foot .op-form-actions {
+  margin-left: auto;
+}
+
+.op-ig-status {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.op-ig-problem {
+  font-size: 0.72rem;
+  color: var(--term-red);
+}
+
+/* Inline in the Understand step (D63): the pane scrolls, and the apply footer stays in view. */
+.op-step-pane .op-ig {
+  max-height: none;
+}
+
+.op-step-pane .op-ig-body {
+  overflow: visible;
+}
+
+.op-step-pane .op-ig-foot {
+  position: sticky;
+  bottom: 0;
+  padding-bottom: 0.5rem;
+  background: var(--bg-canvas);
+}

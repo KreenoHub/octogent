@@ -1,37 +1,23 @@
-# Octoplan + Octogent: the tutorial video
+# Octoplan + Octogent: the tutorial videos
 
-[`octoplan-octogent-tutorial.mp4`](octoplan-octogent-tutorial.mp4) is a 1920x1080, 30 fps video, about 3.5 minutes long. It has no voice: big animated captions carry the story. It is made for someone new to Claude, and it explains what the two tools are, what they are for, and how to use them on the real UI.
+| Video | Covers | Length |
+|---|---|---|
+| [`octoplan-v3-tutorial.mp4`](octoplan-v3-tutorial.mp4) | **Current (v3).** The whole journey for a first-time user: a new idea or an import, the "What I understood" review, the interview, goal, stages, the handoff, Run Octogent, and the agents building in Octogent | about 5 min 20 s |
+| [`octoplan-octogent-tutorial.mp4`](octoplan-octogent-tutorial.mp4) | The original (v1) tour: the cockpit, question cards, the plan board, brainstorm, graph, export | about 3.5 min |
 
-The source is a Remotion project in [`apps/octoplan-video`](../../../apps/octoplan-video).
+Both are 1920x1080, 30 fps, with no voice: big animated captions carry the story. The written companion is [`../HOW-TO.md`](../HOW-TO.md). The source is a Remotion project in [`apps/octoplan-video`](../../../apps/octoplan-video).
 
-## What it covers
+## The v3 video, scene by scene
 
-| # | Scene | What the viewer learns |
-|---|-------|------------------------|
-| 1 | Hook | Planning with AI in a terminal gets messy, fast. |
-| 2 | Pains | Questions get buried, walls of text, forgotten decisions, no big picture. |
-| 3 | Title | Octoplan + Octogent: a calmer way to plan and build with Claude. |
-| 4 | What is Claude | Claude, then Claude Code (Claude working inside your project folder), and the questions it asks you. |
-| 5 | Two tools | Two tools, two jobs: Octoplan plans, Octogent builds. |
-| 6 | The octopus | Each tentacle is one area of the project with its own notes and to-do list; agents work side by side. |
-| 7 | Octogent: Agents | Every tentacle is a lane of work your agents can pick up. |
-| 8 | Octogent: Deck | The Deck: every tentacle's job, to-do list and progress (here, Octoplan's own 6 tentacles). |
-| 9 | Octoplan cockpit | Left: projects and conversations. Middle: question cards. Right: the plan building itself. |
-| 10 | New session | + New session, and the session types (deep interview, quick align, brainstorm). |
-| 11 | Question cards | 1–9 to pick, Enter to send, T to mark an answer tentative. |
-| 12 | Park and revise | P parks a question, R revises an answer and dependent decisions go STALE. |
-| 13 | Focus | F: one question at a time, full screen. |
-| 14 | Plan board | Decisions, gaps and risks, live, saved as plain files in `docs/plan`. |
-| 15 | Idea capture | I: jot an idea down mid-conversation and keep going. |
-| 16 | Brainstorm | Star, park, merge or kill ideas, then Converge. |
-| 17 | Graph | G: the project's branches, and each agent's lane, at a glance. |
-| 18 | Stages | The plan becomes build-in-stages prompts, each with its own checklist. |
-| 19 | Export | Send the tasks to an Octogent tentacle and let the agents build. |
-| 20 | The loop | Plan, build, and around again as the project grows. |
-| 21 | Get started | The commands that start both tools. |
-| 22 | Outro | Think with Octoplan. Build with Octogent. |
+| Part | Scenes | What the viewer learns |
+|---|---|---|
+| Intro | Hook · Title · What is Claude · Two apps · Seven steps | Octoplan plans with you through question cards; Octogent's agents build. Seven steps, and a bar that always says what to do next. |
+| 1 · Plan it | Home · New from an idea · Import · Reading · What I understood · Items and evidence · Assumptions · Disagreements · Interview · Card keys · Focus · Answered rounds · Goal · Stages | Both ways in; how an import is read and reviewed (maturity, found vs inferred, sources that disagree); answering cards; the plan board and coverage; GOAL.md and build prompts. |
+| 2 · Hand it off | Generate · Review · Needs Octogent · Run Octogent · Done | Tentacles and to-dos; the "start Octogent first" moment and the one-click fix; the octopus prompt. |
+| 3 · Build it | The octopus · Build step · Deck · A tentacle · Agents · Octopus prompt rules · A real finished project | What Octogent shows, how agents are started, and what "done" looks like. |
+| Outro | The loop · Recap · Get started · Outro | Harvest brings build-time decisions back; the seven steps; the commands. |
 
-Every UI shot is a real screenshot of Octoplan and Octogent. They come from a demo project (a small habit-tracker CLI) running on its own ports, so no real sessions appear in the video.
+All UI footage is real. Octoplan and Octogent shots come from a demo project ("tally", a small CLI) run on private ports by `tools/footageV3.mjs`. The finished-project shot is the real Octogent Deck for Octoplan's own build.
 
 ## Editing and re-rendering
 
@@ -39,23 +25,27 @@ From `apps/octoplan-video`:
 
 ```bash
 pnpm install                                  # once, from the repo root
-pnpm studio                                   # Remotion Studio: scrub, tweak, preview live
+pnpm studio                                   # Remotion Studio: pick TutorialV3, scrub, preview
 pnpm build                                    # typecheck
-pnpm render                                   # writes docs/octoplan/tutorial/octoplan-octogent-tutorial.mp4
-pnpm still -- out/frame.png --frame=3450      # one frame as a PNG, for quick checks
+pnpm render:v3                                # writes docs/octoplan/tutorial/octoplan-v3-tutorial.mp4
+pnpm render                                   # the v1 video
+npx remotion still src/index.ts TutorialV3 out/frame.png --frame=2440   # one frame, for checks
 ```
 
-- Scene order and lengths live in `src/Tutorial.tsx` (`SCENES`).
-- The talking scenes are in `src/scenes/Explainers.tsx`. The UI tour scenes are in `src/scenes/Tour.tsx`.
+- v3 scene order and lengths: `src/v3/TutorialV3.tsx` (`SCENES_V3`). The scenes: `src/v3/scenes.tsx`.
+- A tour scene is a list of **beats** (`src/v3/kit.tsx`): where the camera looks, what gets highlighted, where the cursor clicks. Captions are **lines** with a start frame.
+- Boxes come from `R(shot, name)`, which reads the element positions recorded at capture time (`src/v3/rects.ts`). So highlights follow the real UI after a re-shoot, with no hand-measured pixels (Octogent's own screens are the exception).
 - In captions, `*words*` are painted amber and `_words_` green.
-- `Shot` (in `src/components/Shot.tsx`) moves the camera over a screenshot with `cams` keyframes and draws labelled highlight boxes with `marks`. Coordinates are in the screenshot's CSS pixels (2000x1250).
 
-## Re-capturing the screenshots
+## Re-shooting the v3 footage
 
-`tools/captureUi.mjs` drives headless Edge over the DevTools protocol. It follows the steps in `tools/shots.json` (wait, press a key, click, type, scroll) and saves 2x PNGs.
+```bash
+node tools/footageV3.mjs      # from apps/octoplan-video; takes a few minutes of real Claude time
+node tools/rectsToTs.mjs      # refresh src/v3/rects.ts from the recorded element boxes
+```
 
-1. Start Octoplan and Octogent on the ports in `tools/shots.json`, with a demo project that has a couple of answered sessions.
-2. Update the session ids in `tools/shots.json`.
-3. Run `pnpm capture -- tools/shots.json public/shots`.
+`footageV3.mjs` builds a demo repo, a spec and a notes folder in a temp folder, starts a private Octoplan (`:8797`, web `:5197`) and drives the whole workflow through it with real Claude: import, review, interview, GOAL.md, stages, handoff, and Run Octogent (headless, private home, `:9878`). It takes a screenshot at every step. The servers stay up at the end (`footage-state.json` in the temp folder) so single shots can be retaken with `tools/captureUi.mjs`. That tool can also click at a position (`clickAt`), choose a dropdown option (`select`), scroll to an element (`scrollIntoView`) and run a snippet (`eval`).
 
-If a screen's layout changes, check the `marks` boxes in `Tour.tsx`, because they point at fixed pixel positions.
+## Re-capturing the v1 screenshots
+
+`tools/captureUi.mjs` follows the steps in `tools/shots.json` and saves 2x PNGs to `public/shots`. Start Octoplan and Octogent on the ports in that file, update the session ids, then run `pnpm capture -- tools/shots.json public/shots`. The v1 highlight boxes in `src/scenes/Tour.tsx` are fixed pixel positions, so check them after a layout change.

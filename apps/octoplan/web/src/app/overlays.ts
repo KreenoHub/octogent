@@ -5,8 +5,7 @@ export type Overlay =
   | "idea"
   | "branch"
   | "graph"
-  | "export"
-  | "handoff";
+  | "export";
 
 /** `?focus=1` opens focus mode on load: a bookmarkable "just answer questions" view. */
 export const initialOverlay = (search: string): Overlay =>

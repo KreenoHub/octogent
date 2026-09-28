@@ -116,3 +116,14 @@
 .op-shell[data-terminal="open"] {
   grid-template-rows: auto auto minmax(0, 1fr) minmax(12rem, 35vh);
 }
+
+/* v3 (D50): the Home button sits next to the logo; the home screen takes all three columns. */
+.op-header-home {
+  margin-left: 1rem;
+  margin-right: auto;
+}
+
+.op-panes--home {
+  grid-template-columns: 1fr;
+  overflow: auto;
+}

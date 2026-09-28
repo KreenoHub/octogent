@@ -223,3 +223,24 @@
   color: var(--accent-primary);
   outline: none;
 }
+
+/* Long user turns fold to one line (the kickoff plan context especially). */
+.op-bubble--folded {
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.op-bubble-summary,
+.op-bubble-text {
+  flex: 1;
+  margin: 0;
+}
+
+.op-bubble-summary {
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

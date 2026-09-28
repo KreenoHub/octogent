@@ -5,6 +5,7 @@ import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 import type { Options, SdkMcpToolDefinition } from "@anthropic-ai/claude-agent-sdk";
 import { type HandoffTentacle, harvestCandidateSchema } from "@octogent/octoplan-protocol";
 import { z } from "zod";
+import type { IngestReport } from "../modes/ingest";
 import type { HarvestCandidateInput } from "../store/types";
 import { createInputQueue } from "./inputQueue";
 import { PLAN_SERVER_NAME } from "./planTools";
@@ -13,6 +14,9 @@ import type { CreateHeadlessRunner, QueryFn } from "./types";
 
 export const HARVEST_TOOL = "plan_add_harvest";
 export const HANDOFF_TOOL = "plan_propose_handoff";
+export const INGEST_TOOL = "plan_ingest";
+/** G5: an import reads more than a harvest; tune against real monorepos. */
+export const INGEST_MAX_TURNS = 40;
 
 /** Nobody is there to answer, so a headless pass gets the read tools without AskUserQuestion. */
 export const HEADLESS_READ_TOOLS = PLANNING_BUILTIN_TOOLS.filter((t) => t !== "AskUserQuestion");
@@ -45,6 +49,35 @@ const handoffTentacleShape = z.object({
   todos: z.array(handoffTodoShape),
 });
 
+// Loose on purpose: normalizeIngest drops what doesn't fit instead of failing the whole pass.
+const ingestReportShape = {
+  title: z.string().optional(),
+  why: z.string().optional(),
+  maturity: z.string().optional(),
+  maturityReasons: z.string().optional(),
+  sources: z
+    .array(
+      z.object({ id: z.string(), maturity: z.string().optional(), note: z.string().optional() }),
+    )
+    .optional(),
+  items: z
+    .array(
+      z.object({
+        kind: z.string(),
+        title: z.string(),
+        body: z.string().optional(),
+        evidence: z.string().optional(),
+        source: z.string().optional(),
+        quote: z.string().optional(),
+        reason: z.string().optional(),
+        inPlan: z.string().optional(),
+        disagreement: z.boolean().optional(),
+      }),
+    )
+    .optional(),
+  coverage: z.array(z.object({ dimension: z.string(), status: z.string() })).optional(),
+};
+
 const ok = (text: string) => ({ content: [{ type: "text" as const, text }] });
 const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
@@ -60,6 +93,7 @@ const runPass = async (
   // biome-ignore lint/suspicious/noExplicitAny: the SDK types its tool list this way.
   toolDef: SdkMcpToolDefinition<any>,
   onCall: () => number,
+  extra: Pick<Options, "additionalDirectories"> = {},
 ) => {
   const input = createInputQueue();
   const abort = new AbortController();
@@ -79,6 +113,7 @@ const runPass = async (
     },
     maxTurns,
     abortController: abort,
+    ...extra,
   };
   input.push(prompt);
   try {
@@ -142,6 +177,30 @@ export const createHeadlessRunner: CreateHeadlessRunner = ({ query, maxTurns }) 
       );
       await runPass(query, turns, repoPath, prompt, handoffTool, () => (proposed ? 1 : 0));
       return proposed ?? [];
+    },
+
+    ingest: async ({ repoPath, prompt, additionalDirectories }) => {
+      let report: IngestReport | null = null;
+      const ingestTool = tool(
+        INGEST_TOOL,
+        "Report the whole import at once; a later call replaces an earlier one.",
+        ingestReportShape,
+        async (args) => {
+          report = args as IngestReport;
+          const count = Array.isArray(args.items) ? args.items.length : 0;
+          return ok(`Recorded the import: ${count} item${count === 1 ? "" : "s"}.`);
+        },
+      );
+      await runPass(
+        query,
+        maxTurns ?? INGEST_MAX_TURNS,
+        repoPath,
+        prompt,
+        ingestTool,
+        () => (report ? 1 : 0),
+        additionalDirectories.length > 0 ? { additionalDirectories } : {},
+      );
+      return report;
     },
   };
 };

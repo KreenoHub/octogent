@@ -195,6 +195,41 @@ export const startOctoplanServer = (options: {
       case "request-graph":
         await planOps?.requestGraph(event.repoPath, (e) => send(socket, e));
         return;
+      case "request-octogent-status":
+        await planOps?.requestOctogentStatus(event.repoPath, (e) => send(socket, e));
+        return;
+      case "launch-octogent":
+        await planOps?.launchOctogent(event.repoPath);
+        return;
+      // v3 entry paths (D50–D57): both end in a deep interview the requester is moved to.
+      case "create-project": {
+        const repoPath = await planOps?.createProject(event);
+        if (!repoPath) return;
+        send(socket, { type: "focus-repo", repoPath });
+        const session = await manager.start({ repoPath, mode: "deep-interview", topic: event.idea });
+        if (session) send(socket, { type: "focus-session", sessionId: session.id });
+        return;
+      }
+      case "start-import":
+        await planOps?.startImport(event, (e) => send(socket, e));
+        return;
+      case "save-ingest":
+        await planOps?.saveIngest(event.repoPath, event.draft);
+        return;
+      case "apply-ingest": {
+        const applied = await planOps?.applyIngest(event.repoPath, event.draft);
+        if (!applied) return;
+        const session = await manager.start({
+          repoPath: applied.repoPath,
+          mode: "deep-interview",
+          topic: applied.topic,
+          brief: applied.brief,
+        });
+        if (session) send(socket, { type: "focus-session", sessionId: session.id });
+        // D57: a built project also gets its history harvested (only when there are commits).
+        void planOps?.runHarvest(applied.repoPath, { auto: true });
+        return;
+      }
       case "link-branch":
         await planOps?.linkBranch(event.repoPath, event.branchId, event.gitBranch);
         return;
@@ -209,11 +244,15 @@ export const startOctoplanServer = (options: {
   };
 
   wss.on("connection", (socket) => {
-    send(socket, {
-      type: "hello",
-      protocolVersion: PROTOCOL_VERSION,
-      serverVersion: SERVER_VERSION,
-    });
+    void (async () => {
+      const defaultProjectsDir = await planOps?.defaultProjectsDir().catch(() => undefined);
+      send(socket, {
+        type: "hello",
+        protocolVersion: PROTOCOL_VERSION,
+        serverVersion: SERVER_VERSION,
+        ...(defaultProjectsDir ? { defaultProjectsDir } : {}),
+      });
+    })();
     socket.on("message", (data) => {
       const event = parseClientEvent(data.toString());
       if (!event) {

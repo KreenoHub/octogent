@@ -38,6 +38,9 @@ import {
   getPreambleMeta,
   goalDocSchema,
   handoffPlanSchema,
+  type IngestDraft,
+  ingestDraftSchema,
+  SOURCES_DIR,
   harvestCodec,
   ideaCodec,
   nextId,
@@ -50,6 +53,7 @@ import {
   riskCodec,
   serializeGoalDoc,
   serializeHandoffDoc,
+  serializeIngestDoc,
   serializeRecordDoc,
   serializeStage,
   sessionFileName,
@@ -744,6 +748,32 @@ class FsPlanStore implements PlanStore {
       text: markdown,
       result: undefined,
     }));
+  }
+
+  // ---------- v3: import (D52, D56) ----------
+
+  async readIngest(): Promise<IngestDraft | null> {
+    return (await this.index.sync()).snapshot.ingest ?? null;
+  }
+
+  async writeIngest(draft: IngestDraft): Promise<void> {
+    const valid = ingestDraftSchema.parse(draft);
+    await this.writer.mutate(this.planPath(PLAN_FILES.ingest.path), (current) => ({
+      text: serializeIngestDoc(valid, current),
+      result: undefined,
+    }));
+    await this.afterWrite([PLAN_FILES.ingest.path]);
+  }
+
+  async writePastedSource(text: string): Promise<string> {
+    const dir = this.planPath(SOURCES_DIR);
+    await mkdir(dir, { recursive: true });
+    const taken = new Set(await readdir(dir).catch(() => [] as string[]));
+    let n = 1;
+    while (taken.has(`pasted-${n}.md`)) n += 1;
+    const rel = `${SOURCES_DIR}/pasted-${n}.md`;
+    await writeFile(this.planPath(rel), `${text.replace(/\r\n/g, "\n").trim()}\n`, "utf8");
+    return rel;
   }
 
   // ---------- change events ----------

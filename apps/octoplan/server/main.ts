@@ -2,7 +2,12 @@ import { query } from "@anthropic-ai/claude-agent-sdk";
 import { createHeadlessRunner } from "./bridge/headless";
 import { createNodePtyFactory } from "./bridge/pty";
 import { startOctoplanServer } from "./createServer";
-import { createIntegrations, createNodeExec } from "./integrations";
+import { join } from "node:path";
+import { type Exec, createIntegrations, createNodeExec } from "./integrations";
+import {
+  createHeadlessOctogentSpawn,
+  createTerminalLauncher,
+} from "./integrations/terminalLauncher";
 import { applyCoverageUpdate, getMode } from "./modes";
 import { createFsPlanStore } from "./store/fsPlanStore";
 import { createIdeaRegistry } from "./store/ideaRegistry";
@@ -27,6 +32,18 @@ const port = parsePort(process.env.OCTOPLAN_PORT);
 // point it at a temp folder. Claude's own login still comes from the real home folder.
 const userDir = process.env.OCTOPLAN_HOME ? { homeDir: process.env.OCTOPLAN_HOME } : {};
 
+// Test-only (the e2e gate, D68): run every `octogent` command, and Run Octogent, under a temp
+// home and without a terminal window, so a gate never touches the user's Octogent. git, gh and
+// Claude keep the real home (Claude's login lives there).
+const octogentProfile = process.env.OCTOPLAN_OCTOGENT_USERPROFILE;
+const baseExec = createNodeExec();
+const octogentOverrides = octogentProfile ? { USERPROFILE: octogentProfile, HOME: octogentProfile } : null;
+const octogentExec = octogentOverrides
+  ? createNodeExec({ env: { ...process.env, ...octogentOverrides } })
+  : baseExec;
+const exec: Exec = (command, args, cwd) =>
+  (command === "octogent" ? octogentExec : baseExec)(command, args, cwd);
+
 startOctoplanServer({
   host,
   port,
@@ -43,8 +60,17 @@ startOctoplanServer({
     // Wave 2: pop-out terminal, Octogent export + git graph, cross-project idea search.
     spawnPty: createNodePtyFactory(),
     integrations: createIntegrations({
-      exec: createNodeExec(),
+      exec,
       ...(process.env.OCTOGENT_URL ? { octogentUrl: process.env.OCTOGENT_URL } : {}),
+      // Where Octogent keeps runtime.json (default ~/.octogent).
+      ...(octogentProfile ? { octogentHome: join(octogentProfile, ".octogent") } : {}),
+      ...(octogentOverrides
+        ? {
+            launcher: createTerminalLauncher({
+              spawnDetached: createHeadlessOctogentSpawn(octogentOverrides),
+            }),
+          }
+        : {}),
     }),
     ideaRegistry: createIdeaRegistry(userDir),
     // v2: sessions survive restarts (D29), user conventions in the digest (D28).

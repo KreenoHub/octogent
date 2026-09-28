@@ -180,6 +180,8 @@ export const createSessionManager = (deps: BridgeDeps, emit: Broadcast) => {
   const emitPlan = async (repoPath: string, store: PlanStore) => {
     try {
       broadcast({ type: "plan", repoPath, plan: await store.snapshot() });
+      // v3 (D62): the stepper needs to know stages exist without a generate in this session.
+      broadcast({ type: "stages", repoPath, stages: await store.readStages() });
     } catch (error) {
       reportError(`Could not read docs/plan: ${errorText(error)}`);
     }
@@ -573,7 +575,8 @@ export const createSessionManager = (deps: BridgeDeps, emit: Broadcast) => {
   };
 
   return {
-    start: async (input: { repoPath: string; mode: ModeId; topic: string }) => {
+    /** `brief` (v3, D57) goes between the plan digest and the mode's kickoff prompt. */
+    start: async (input: { repoPath: string; mode: ModeId; topic: string; brief?: string }) => {
       const repoPath = resolve(input.repoPath.trim().replace(/^"(.*)"$/, "$1"));
       try {
         if (!statSync(repoPath).isDirectory()) throw new Error("not a directory");
@@ -601,7 +604,7 @@ export const createSessionManager = (deps: BridgeDeps, emit: Broadcast) => {
       // D16/D34: Claude starts from what docs/plan already settled.
       const digest = await planDigest(store);
       const prompt = mode.buildKickoffPrompt(topic);
-      const kickoff = digest ? `${digest}\n\n${prompt}` : prompt;
+      const kickoff = [digest, input.brief?.trim(), prompt].filter(Boolean).join("\n\n");
       addBlock(live, { kind: "user", id: blockId(live), text: kickoff, at: now().toISOString() });
       runQuery(live).push(kickoff);
       return live.session;
@@ -814,6 +817,7 @@ export const createSessionManager = (deps: BridgeDeps, emit: Broadcast) => {
       for (const [repoPath, store] of stores) {
         try {
           send({ type: "plan", repoPath, plan: await store.snapshot() });
+          send({ type: "stages", repoPath, stages: await store.readStages() });
         } catch {
           // A broken plan file must not block the rest of the replay.
         }

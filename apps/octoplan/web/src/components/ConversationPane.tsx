@@ -1,4 +1,4 @@
-import type { MessageBlock } from "@octogent/octoplan-protocol";
+import { DIGEST_HEADING, type MessageBlock } from "@octogent/octoplan-protocol";
 import { useState } from "react";
 import { cardActionMessage, followUpQuote } from "../app/cardActions";
 import { useExpandAll } from "../app/expandAll";
@@ -60,6 +60,41 @@ const RoundView = ({ roundId, sessionId }: { roundId: string; sessionId: string 
   );
 };
 
+/** User turns longer than this fold to one line (the kickoff digest is often 60+ lines). */
+export const USER_FOLD_LINES = 6;
+
+/**
+ * A user turn. Long ones fold to a one-line summary (D5, anti-wall-of-text): the plan context
+ * Octoplan sends at kickoff gets its own label; E (expand all) opens every one.
+ */
+const UserBubble = ({ text }: { text: string }) => {
+  const expandAll = useExpandAll();
+  const [open, setOpen] = useState(false);
+  const lines = text.split("\n");
+  if (lines.length <= USER_FOLD_LINES) {
+    return (
+      <div className="op-bubble-row">
+        <p className="op-bubble">{text}</p>
+      </div>
+    );
+  }
+  const isContext = text.startsWith(DIGEST_HEADING) || text.startsWith("## Imported material");
+  const shown = open || expandAll;
+  const summary = isContext
+    ? `Plan context sent to Claude (${lines.length} lines: what's settled, what's open)`
+    : (lines.find((line) => line.trim()) ?? "").slice(0, 120);
+  return (
+    <div className="op-bubble-row">
+      <div className="op-bubble op-bubble--folded">
+        {shown ? <p className="op-bubble-text">{text}</p> : <p className="op-bubble-summary">{summary}</p>}
+        <button type="button" className="op-card-action" onClick={() => setOpen(!shown)}>
+          {shown ? "Fold" : `Show all ${lines.length} lines`}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const BlockView = ({
   block,
   sessionId,
@@ -71,11 +106,7 @@ const BlockView = ({
 }) => {
   switch (block.kind) {
     case "user":
-      return (
-        <div className="op-bubble-row">
-          <p className="op-bubble">{block.text}</p>
-        </div>
-      );
+      return <UserBubble text={block.text} />;
     case "tool":
       return <ToolRow tool={block} />;
     case "section":

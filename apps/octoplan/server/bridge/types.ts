@@ -2,6 +2,7 @@ import type { Options, SDKMessage, SDKUserMessage } from "@anthropic-ai/claude-a
 import type { HandoffTentacle, ServerEvent } from "@octogent/octoplan-protocol";
 import type { Integrations } from "../integrations/types";
 import type { ApplyCoverageUpdate, GetMode } from "../modes/types";
+import type { IngestReport } from "../modes/ingest";
 import type { BuildConvergeTurn } from "../modes/wave2Types";
 import type {
   ConventionsStore,
@@ -71,6 +72,13 @@ export type BridgeV2Deps = {
 export type HeadlessRunner = {
   harvest(input: { repoPath: string; prompt: string }): Promise<HarvestCandidateInput[]>;
   proposeHandoff(input: { repoPath: string; prompt: string }): Promise<HandoffTentacle[]>;
+  /** v3 (D53): one read-only pass over the import sources; null when Claude reported nothing. */
+  ingest(input: {
+    repoPath: string;
+    prompt: string;
+    /** Extra folders (and extra files' folders) Claude may read besides repoPath. */
+    additionalDirectories: string[];
+  }): Promise<IngestReport | null>;
 };
 
 export type CreateHeadlessRunner = (deps: { query: QueryFn; maxTurns?: number }) => HeadlessRunner;

@@ -45,6 +45,10 @@ startOctoplanServer({
     integrations: createIntegrations({
       exec: createNodeExec(),
       ...(process.env.OCTOGENT_URL ? { octogentUrl: process.env.OCTOGENT_URL } : {}),
+      // Where Octogent keeps runtime.json (default ~/.octogent); the e2e gate points it at a temp home.
+      ...(process.env.OCTOPLAN_OCTOGENT_HOME
+        ? { octogentHome: process.env.OCTOPLAN_OCTOGENT_HOME }
+        : {}),
     }),
     ideaRegistry: createIdeaRegistry(userDir),
     // v2: sessions survive restarts (D29), user conventions in the digest (D28).

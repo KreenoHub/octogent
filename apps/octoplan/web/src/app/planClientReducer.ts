@@ -5,6 +5,7 @@ import type {
   HandoffResult,
   IdeaSearchResult,
   MessageBlock,
+  OctogentStatus,
   Overview,
   PlanSnapshot,
   QuestionRound,
@@ -74,6 +75,8 @@ export type PlanClientState = {
   /** Latest state per job kind, keyed by repo then job. */
   jobsByRepo: Record<string, Partial<Record<PlanJob["job"], PlanJob>>>;
   handoffResultByRepo: Record<string, HandoffResult>;
+  /** v3 (D61): the latest Octogent status per repo, from request-octogent-status or a launch. */
+  octogentStatusByRepo: Record<string, OctogentStatus>;
 };
 
 export const MAX_ERRORS = 20;
@@ -99,6 +102,7 @@ export const initialPlanClientState: PlanClientState = {
   conventions: [],
   jobsByRepo: {},
   handoffResultByRepo: {},
+  octogentStatusByRepo: {},
 };
 
 const upsertById = <T extends { id: string }>(items: T[], item: T): T[] => {
@@ -227,6 +231,14 @@ export const planClientReducer = (
       return {
         ...state,
         handoffResultByRepo: { ...state.handoffResultByRepo, [event.repoPath]: event.result },
+      };
+    case "octogent-status":
+      return {
+        ...state,
+        octogentStatusByRepo: {
+          ...state.octogentStatusByRepo,
+          [event.status.repoPath]: event.status,
+        },
       };
     case "local/graph-requested":
       return {

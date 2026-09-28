@@ -25,6 +25,7 @@ import {
   overviewSchema,
   sessionLogSummarySchema,
 } from "./v2";
+import { octogentStatusSchema } from "./v3";
 
 export const PROTOCOL_VERSION = 1;
 
@@ -95,6 +96,9 @@ export const serverEventSchema = z.discriminatedUnion("type", [
     repoPath: z.string(),
     result: handoffResultSchema,
   }),
+  // v3
+  /** Octogent's state for one repo (reply to request-octogent-status, and during a launch). */
+  z.object({ type: z.literal("octogent-status"), status: octogentStatusSchema }),
 ]);
 export type ServerEvent = z.infer<typeof serverEventSchema>;
 
@@ -183,6 +187,10 @@ export const clientEventSchema = z.discriminatedUnion("type", [
     branchId: z.string(),
     gitBranch: z.string().min(1),
   }),
+  // v3
+  z.object({ type: z.literal("request-octogent-status"), repoPath: z.string() }),
+  /** D58–D60: init if needed, open a terminal running `octogent`, then report until it's up. */
+  z.object({ type: z.literal("launch-octogent"), repoPath: z.string() }),
 ]);
 export type ClientEvent = z.infer<typeof clientEventSchema>;
 

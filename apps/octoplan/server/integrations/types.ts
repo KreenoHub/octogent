@@ -8,8 +8,11 @@ import type {
   HandoffPlan,
   HandoffResult,
   HarvestCandidate,
+  OctogentStatus,
   TentacleSummary,
 } from "@octogent/octoplan-protocol";
+import type { RuntimeProbe } from "./octogentRuntime";
+import type { TerminalLauncher } from "./terminalLauncher";
 
 export type ExecResult = { code: number; stdout: string; stderr: string };
 
@@ -94,13 +97,29 @@ export type Integrations = {
    * D-id stamps. Hand notes and Octogent's managed block are never touched.
    */
   applyHandoff(input: ApplyHandoffInput): Promise<HandoffResult>;
+
+  // ---- v3 ----
+  /** D61: Octogent's state for the repo's workspace, from its runtime.json. Never throws. */
+  octogentStatus(repoPath: string): Promise<OctogentStatus>;
+  /**
+   * D58–D60: `octogent init` when needed, then a terminal running `octogent`. Returns `starting`
+   * (poll octogentStatus), or the current status when it's already up or can't be launched.
+   */
+  launchOctogent(repoPath: string): Promise<OctogentStatus>;
 };
 
 export type IntegrationsDeps = {
   exec: Exec;
   now?: () => Date;
-  /** Octogent's web UI, for the handoff's "Open Deck" link (default http://localhost:8787). */
+  /** Fixed Octogent URL (OCTOGENT_URL); overrides the one read from runtime.json (D61). */
   octogentUrl?: string;
+  // v3: Run Octogent. Each defaults to the real thing; tests and the e2e gate inject fakes.
+  /** `~/.octogent`, where Octogent keeps runtime.json per project. */
+  octogentHome?: string;
+  isPidAlive?: RuntimeProbe["isPidAlive"];
+  apiAnswers?: RuntimeProbe["apiAnswers"];
+  launcher?: TerminalLauncher;
+  hasCommand?: (name: string) => boolean;
 };
 
 export type CreateIntegrations = (deps: IntegrationsDeps) => Integrations;

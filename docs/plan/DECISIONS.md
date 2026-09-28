@@ -590,7 +590,7 @@ The button targets the workspace from D48, the same one the handoff writes to. I
 - source: user answer 2026-09-28
 - depends-on: D58
 
-On Windows, Octoplan runs `wt.exe -d <dir> cmd /k octogent` when Windows Terminal is installed, and otherwise `cmd /c start "Octogent — <name>" /D <dir> cmd /k octogent`. On macOS it opens Terminal through osascript with `cd <dir> && octogent`. On Linux it uses `x-terminal-emulator` when present. When none works, it shows the command with a copy button. The process is detached: closing Octoplan leaves Octogent running, and there is no Stop button. If `octogent` isn't on PATH, the button shows how to install it instead.
+On Windows, Octoplan runs `cmd /c start "Octogent" cmd.exe /d /k octogent` with the workspace as the process's working directory, so the path is never re-parsed by a shell. Windows 11 opens it in Windows Terminal when that's the default terminal, so there's no separate `wt.exe` path. On macOS it opens Terminal through osascript with `cd <dir> && octogent`. On Linux it uses `x-terminal-emulator` when present. When none works, it shows the command with a copy button. The process is detached: closing Octoplan leaves Octogent running, and there is no Stop button. If `octogent` isn't on PATH, the button shows how to install it instead.
 
 <!-- op:id=D60 -->
 ## D60 — Octoplan runs `octogent init` first when needed

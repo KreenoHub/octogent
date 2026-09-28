@@ -5,6 +5,7 @@ import { type KeyboardEvent, useCallback, useEffect, useRef, useState } from "re
 import type { PlanJob } from "../../app/planClientReducer";
 import { useOctoplan } from "../../app/useOctoplan";
 import type { HandoffSlotProps } from "../../components/slots";
+import { OctogentLaunch } from "../octogent/OctogentLaunch";
 import { ReviewStep } from "./ReviewStep";
 import { type Draft, draftProblem, fromPlan, toPlan } from "./handoffDraft";
 import "./handoff.css";
@@ -212,8 +213,11 @@ export const HandoffWizard = ({ repoPath, onClose }: HandoffSlotProps) => {
 
         {step === 4 ? (
           <DoneStep
+            repoPath={repoPath}
             plan={serverPlan}
             result={result}
+            retrying={waiting?.kind === "apply"}
+            onRetry={apply}
             copyNote={copyNote}
             onCopy={async () => {
               const text = serverPlan?.octopusPrompt ?? "";
@@ -453,16 +457,26 @@ const ApplyStep = ({
   );
 };
 
+/** The apply failed because the workspace has no running Octogent (octogentExport.ts). */
+const needsOctogent = (result: HandoffResult | undefined) =>
+  Boolean(result?.tentacles.some((t) => !t.ok && /start octogent/i.test(t.message)));
+
 const DoneStep = ({
+  repoPath,
   plan,
   result,
+  retrying,
+  onRetry,
   copyNote,
   onCopy,
   onBack,
   onRestart,
 }: {
+  repoPath: string;
   plan: HandoffPlan | null;
   result: HandoffResult | undefined;
+  retrying: boolean;
+  onRetry: () => void;
   copyNote: string | null;
   onCopy: () => void;
   onBack: () => void;
@@ -497,22 +511,30 @@ const DoneStep = ({
       </p>
     ) : null}
 
-    {result && !result.ok ? (
-      <button type="button" className="op-button" onClick={onBack}>
-        Back to review
-      </button>
+    {needsOctogent(result) ? (
+      <p className="op-hw-lead">
+        Octogent isn't running in this folder yet. Start it below, then retry the apply.
+      </p>
     ) : null}
 
-    {result?.deckUrl ? (
-      <a
-        className="op-button op-button--primary op-hw-deck"
-        href={result.deckUrl}
-        target="_blank"
-        rel="noreferrer"
-      >
-        Open Octogent
-      </a>
+    <OctogentLaunch repoPath={repoPath} fallbackUrl={result?.deckUrl} />
+
+    {result && !result.ok ? (
+      <div className="op-form-actions">
+        <button type="button" className="op-button" onClick={onBack}>
+          Back to review
+        </button>
+        <button
+          type="button"
+          className="op-button op-button--primary"
+          disabled={retrying}
+          onClick={onRetry}
+        >
+          Retry apply
+        </button>
+      </div>
     ) : null}
+    {retrying ? <Spinner text="Applying…" /> : null}
 
     {plan?.octopusPrompt ? (
       <div className="op-hw-octopus">

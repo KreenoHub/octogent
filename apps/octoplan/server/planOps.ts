@@ -9,6 +9,7 @@ import type {
   HandoffTentacle,
   IdeaAction,
   IdeaSearchResult,
+  OctogentStatus,
   ServerEvent,
 } from "@octogent/octoplan-protocol";
 import type { Broadcast, HeadlessRunner } from "./bridge/types";
@@ -39,7 +40,13 @@ export type PlanOpsDeps = {
   /** Prompt builders and handoff transforms; defaults to the modes tentacle's. */
   v2Modes?: Partial<PlanOpsV2Modes>;
   now?: () => Date;
+  // v3
+  /** How often and how long a launch polls Octogent's runtime.json (D61). */
+  launchPoll?: { intervalMs: number; timeoutMs: number };
+  sleep?: (ms: number) => Promise<void>;
 };
+
+export const DEFAULT_LAUNCH_POLL = { intervalMs: 1000, timeoutMs: 60_000 };
 
 export const NO_INTEGRATIONS_MESSAGE =
   "This Octoplan server was started without integrations, so git graphs and Octogent export are unavailable.";
@@ -65,6 +72,13 @@ export const createPlanOps = (deps: PlanOpsDeps) => {
   const v2: PlanOpsV2Modes = { ...defaultV2, ...deps.v2Modes };
   /** One harvest per repo at a time (repo open + a manual click can overlap). */
   const harvesting = new Set<string>();
+  /** Workspaces with a launch in flight; a second click only reports the current status. */
+  const launching = new Set<string>();
+  const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const poll = deps.launchPoll ?? DEFAULT_LAUNCH_POLL;
+  /** Statuses go to every client, keyed by the repo path the client used. */
+  const sendStatus = (repoPath: string, status: OctogentStatus) =>
+    broadcast({ type: "octogent-status", status: { ...status, repoPath } });
   /**
    * Handoff generate/save/apply run one at a time per repo, in arrival order, so an
    * apply sent right after a save always sees the saved plan.
@@ -224,6 +238,58 @@ export const createPlanOps = (deps: PlanOpsDeps) => {
     // ---------------- v2 ----------------
 
     /** Tentacle cards + drift badges + history (D21–D24, D42). Each part degrades on its own. */
+    // ---- v3: Run Octogent (D58–D61) ----
+    requestOctogentStatus: async (repoPath: string, reply: (event: ServerEvent) => void) => {
+      if (!deps.integrations) return fail(NO_INTEGRATIONS_MESSAGE);
+      try {
+        const status = await deps.integrations.octogentStatus(resolve(repoPath));
+        reply({ type: "octogent-status", status: { ...status, repoPath } });
+      } catch (error) {
+        fail(`Could not check Octogent: ${errorText(error)}`);
+      }
+    },
+
+    /** Launch, then poll runtime.json until Octogent answers or the timeout passes. */
+    launchOctogent: async (repoPath: string) => {
+      if (!deps.integrations) return fail(NO_INTEGRATIONS_MESSAGE);
+      const integrations = deps.integrations;
+      const path = resolve(repoPath);
+      const workspace = await integrations.resolveWorkspace(path);
+      const key = resolve(workspace).toLowerCase();
+      if (launching.has(key)) {
+        sendStatus(repoPath, {
+          ...(await integrations.octogentStatus(path)),
+          state: "starting",
+          message: "Octogent is already starting…",
+        });
+        return;
+      }
+      launching.add(key);
+      try {
+        const started = await integrations.launchOctogent(path);
+        sendStatus(repoPath, started);
+        if (started.state !== "starting") return;
+        for (let waited = 0; waited < poll.timeoutMs; waited += poll.intervalMs) {
+          await sleep(poll.intervalMs);
+          const status = await integrations.octogentStatus(path);
+          if (status.state === "running") {
+            sendStatus(repoPath, status);
+            notice(`Octogent is running on :${status.port}.`);
+            return;
+          }
+        }
+        const last = await integrations.octogentStatus(path);
+        sendStatus(repoPath, {
+          ...last,
+          message: `Octogent didn't report a port within ${Math.round(poll.timeoutMs / 1000)} s. Check its terminal window for an error.`,
+        });
+      } catch (error) {
+        fail(`Could not start Octogent: ${errorText(error)}`);
+      } finally {
+        launching.delete(key);
+      }
+    },
+
     requestOverview: async (repoPath: string, reply: (event: ServerEvent) => void) => {
       const path = resolve(repoPath);
       const store = deps.storeFor(path);

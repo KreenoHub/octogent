@@ -195,6 +195,12 @@ export const startOctoplanServer = (options: {
       case "request-graph":
         await planOps?.requestGraph(event.repoPath, (e) => send(socket, e));
         return;
+      case "request-octogent-status":
+        await planOps?.requestOctogentStatus(event.repoPath, (e) => send(socket, e));
+        return;
+      case "launch-octogent":
+        await planOps?.launchOctogent(event.repoPath);
+        return;
       case "link-branch":
         await planOps?.linkBranch(event.repoPath, event.branchId, event.gitBranch);
         return;

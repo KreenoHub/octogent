@@ -418,7 +418,7 @@ v2 runs with `pnpm --filter @octogent/octoplan dev` on 8790/5190, bound to 127.0
 <!-- op:id=D41 -->
 ## D41 — Three waves by pain point, all within ~1 week
 - date: 2026-09-27
-- status: active
+- status: stale
 - source: octoplan session
 - questions: Q46, Q47
 - depends-on: D7, D35, D38
@@ -492,3 +492,201 @@ Apply writes docs/plan/OCTOPUS.md: a self-contained prompt for the coordinating 
 - depends-on: D36
 
 For a repo opened from a git worktree, the Octogent workspace is the main worktree (from `git rev-parse --git-common-dir`) when its `.octogent/` exists, otherwise the repo itself. Todos go under a heading chosen in the wizard (default: the plan title), with `### Wave n` subheadings.
+
+<!-- op:id=D49 -->
+## D49 — v3 targets three frictions: entry, launch, guidance
+- date: 2026-09-28
+- status: active
+- source: user request 2026-09-28
+- depends-on: D1
+
+After v2, three things still push the user out of Octoplan: every session must start from an existing repo and a topic, and nothing already written outside docs/plan is used; the handoff ends at a link to a guessed port, so Octogent must be started by hand; and the cockpit hides the workflow behind hotkeys, so the user can't see where they are or what comes next. v3 fixes these three and nothing else.
+
+<!-- op:id=D50 -->
+## D50 — A home screen with two entry paths
+- date: 2026-09-28
+- status: active
+- source: user request 2026-09-28
+- depends-on: D49
+
+Octoplan opens on a home screen with two big choices, "New project from an idea" and "Import something that exists", plus a list of recent projects showing each one's current step (D62). It replaces NewSessionDialog as the main entry. The sidebar keeps the session list, and starting another session on an open project still works from there.
+
+<!-- op:id=D51 -->
+## D51 — "New from idea" creates the project folder
+- date: 2026-09-28
+- status: active
+- source: user answer 2026-09-28
+- depends-on: D50
+
+The user types the idea and a project name and picks a parent folder (default: the parent of the most recent project, otherwise ~/Projects). Octoplan creates `<parent>/<slug>`, refusing if it already exists and isn't empty, runs `git init`, writes a README.md holding the idea and an empty docs/plan/, and makes one initial commit so harvest and drift (D26, D31) have a history to read. It then starts a deep-interview session with the idea as the topic. The Understand step (D63) is shown as skipped.
+
+<!-- op:id=D52 -->
+## D52 — Import takes a main folder plus any extra sources
+- date: 2026-09-28
+- status: active
+- source: user answer 2026-09-28
+- depends-on: D50
+
+The main folder, a repo or any directory, becomes the project. The user can add any number of extra files or folders from anywhere and paste any number of text blocks. Pasted text is saved to `docs/plan/sources/pasted-<n>.md`, so it is in git and can be read again. Extra paths are recorded by absolute path in INGEST.md and are not copied. If the main folder isn't a git repo, a checkbox (on by default) runs `git init` and makes an initial commit; without git, harvest and drift stay off for that project. Only local paths are accepted (see G2).
+
+<!-- op:id=D53 -->
+## D53 — Ingestion is one headless read-only pass over an inventory
+- date: 2026-09-28
+- status: active
+- source: v3 planning 2026-09-28
+- depends-on: D31, D45, D52
+
+The server first builds an inventory of every source: the file tree, sizes and kinds. It skips .git, node_modules, build output, lockfiles and binaries, and caps how many entries it lists. It also collects the existing docs/plan digest (D32). Then one read-only Agent SDK query (the same runner as harvest and handoff) gets the inventory, the pasted text, and the extra folders as `additionalDirectories`. It reads what it needs and reports through a `plan_ingest` tool. Plans and docs (md, txt, pdf, READMEs, specs, manifests) are read before code.
+
+<!-- op:id=D54 -->
+## D54 — Ingest detects how mature the material is
+- date: 2026-09-28
+- status: active
+- source: user request 2026-09-28
+- depends-on: D53
+
+Each source and the whole import get one maturity level: `raw-idea` (a sentence or a few lines), `notes` (scattered thoughts with no structure), `partial-plan` (some goals or decisions, big holes), `detailed-plan` (goals, decisions and scope mostly settled), or `built` (working code, with or without a plan). Mixed imports (say, a detailed spec next to a half-built repo) record both. The level decides where the user lands after the review (D57) and what the kickoff prompt focuses on.
+
+<!-- op:id=D55 -->
+## D55 — Ingest extracts plan items with evidence
+- date: 2026-09-28
+- status: active
+- source: v3 planning 2026-09-28
+- depends-on: D53, D54
+
+The pass returns: a title and why, goals, non-goals, decisions, gaps, risks, and a coverage guess per dimension. Every item is marked `found`, with the source path and a short quote, or `inferred`, with one line of reasoning. When sources disagree, the result is a gap titled "Sources disagree on …" that names both sources. Items that match an existing D-id or goal in docs/plan are marked "already in plan" and are not duplicated.
+
+<!-- op:id=D56 -->
+## D56 — "What I understood" review before anything is written
+- date: 2026-09-28
+- status: active
+- source: user answer 2026-09-28
+- depends-on: D55
+
+The Understand step shows the maturity level with its reasons at the top, then the items grouped by kind. Each item can be kept, edited or dropped. Found items start kept. Inferred items start kept and marked tentative, so on apply they also become risks, the same as tentative answers. Every source-disagreement gap must be resolved or parked before Apply. The draft lives in `docs/plan/INGEST.md` (status draft/applied, the sources, the maturity), so it survives restarts, like HANDOFF.md (D46). Apply writes through the existing plan store with `source: import (<path>)`. Importing again adds sources and shows only the new items.
+
+<!-- op:id=D57 -->
+## D57 — After import, deep planning starts from what's missing
+- date: 2026-09-28
+- status: active
+- source: user request 2026-09-28
+- depends-on: D16, D54, D56
+
+Apply starts a deep-interview session automatically. Its kickoff is the plan digest, then an import summary (maturity, sources), then an explicit list of open gaps and weak coverage dimensions, with the instruction to ask only about those and never re-ask a kept item. Where the user lands depends on maturity: `raw-idea`/`notes` go to the Interview from scratch; `partial-plan` goes to the Interview on the gaps; `detailed-plan` goes to the Interview on gaps only, with a next action that suggests writing GOAL.md early; `built` goes to the Interview on "what's next" and runs harvest on the history.
+
+<!-- op:id=D58 -->
+## D58 — "Run Octogent" button launches it in the handoff folder
+- date: 2026-09-28
+- status: active
+- source: user request 2026-09-28
+- depends-on: D12, D48
+
+The button targets the workspace from D48, the same one the handoff writes to. It appears in three places: the handoff Done step, the handoff Apply error when `.octogent/project.json` is missing ("Start Octogent here", then "Retry apply"), and the Build step (D63). This changes D12 in one narrow way: Octoplan may start the Octogent dashboard. It still never starts, steers or talks to tentacle workers; that stays one click in Octogent's Deck.
+
+<!-- op:id=D59 -->
+## D59 — Launch opens a visible terminal that Octoplan doesn't own
+- date: 2026-09-28
+- status: active
+- source: user answer 2026-09-28
+- depends-on: D58
+
+On Windows, Octoplan runs `wt.exe -d <dir> cmd /k octogent` when Windows Terminal is installed, and otherwise `cmd /c start "Octogent — <name>" /D <dir> cmd /k octogent`. On macOS it opens Terminal through osascript with `cd <dir> && octogent`. On Linux it uses `x-terminal-emulator` when present. When none works, it shows the command with a copy button. The process is detached: closing Octoplan leaves Octogent running, and there is no Stop button. If `octogent` isn't on PATH, the button shows how to install it instead.
+
+<!-- op:id=D60 -->
+## D60 — Octoplan runs `octogent init` first when needed
+- date: 2026-09-28
+- status: active
+- source: v3 planning 2026-09-28
+- depends-on: D58
+
+The handoff's `octogent tentacle create` needs `.octogent/project.json` (and falls back to :8787 without it). So when that file is missing, the launch first runs `octogent init <name>` in the workspace, without a terminal, and waits for it to succeed. The confirm text says it creates `.octogent/` and adds it to .gitignore.
+
+<!-- op:id=D61 -->
+## D61 — Octoplan finds a running Octogent through its runtime.json
+- date: 2026-09-28
+- status: active
+- source: v3 planning 2026-09-28
+- depends-on: D58
+
+Octoplan reads the project id from `.octogent/project.json` and then `~/.octogent/projects/<id>/state/runtime.json` (apiBaseUrl, pid). It confirms the dashboard with an HTTP GET to apiBaseUrl. This replaces the fixed `http://localhost:8787` default; `OCTOGENT_URL` still overrides it. A status chip shows Not started / Starting… / Running :port / Not responding. When Octogent is already running, the button becomes "Open Octogent" and never starts a second instance. Octogent opens its own browser tab on start, so Octoplan doesn't open another. The Build step reminds the user to accept the folder-trust prompt in the first Claude terminal (known gotcha).
+
+<!-- op:id=D62 -->
+## D62 — The workflow has seven steps, derived and never stored
+- date: 2026-09-28
+- status: active
+- source: user answer 2026-09-28
+- depends-on: D49
+
+The steps are Start, Understand, Interview, Goal, Stages, Hand off and Build. A pure function in octoplan-protocol, `deriveWorkflow`, computes each step's state (done / current / ready / not-ready / skipped, with a one-line reason) from what's on disk and in the session:
+- Understand is done when INGEST.md is applied, and skipped for new projects.
+- Interview is done when every coverage dimension is at least partial and no round is pending (see G3).
+- Goal is done when GOAL.md exists.
+- Stages is done when stages/STAGE-*.md exist.
+- Hand off is done when HANDOFF.md is applied.
+- Build is current while Octogent is running or tentacle todos exist, and done when every handed-off todo is ticked.
+The current step is the first one that isn't done.
+
+<!-- op:id=D63 -->
+## D63 — Stepper on top, the 3-pane cockpit stays, the centre follows the step
+- date: 2026-09-28
+- status: active
+- source: user answer 2026-09-28
+- depends-on: D62
+
+A stepper runs across the top of the cockpit. The sidebar (projects and sessions) and the plan board keep their places. The centre pane shows the selected step:
+- Understand: the review (D56).
+- Interview: the conversation and the answer dock.
+- Goal: GOAL.md with its definition of done.
+- Stages: the stage list with its prompts.
+- Hand off: the handoff wizard inline instead of a modal.
+- Build: the tentacle cards from G, the Octogent status (D61) and harvest candidates.
+Steps never block. Any step can be clicked, and a not-ready step says what it's waiting for.
+
+<!-- op:id=D64 -->
+## D64 — A bottom bar always shows the one next action
+- date: 2026-09-28
+- status: active
+- source: user answer 2026-09-28
+- depends-on: D62
+
+A bar under the panes shows the reason and exactly one primary button, taken from `deriveWorkflow`. Examples: "Answer 2 more questions", "Review what I understood → Apply", "Ask Claude to write GOAL.md" (sends a user turn asking for plan_write_goal), "Generate stages", "Hand off to Octogent", "Run Octogent", "Open Octogent". Secondary actions stay in their panels.
+
+<!-- op:id=D65 -->
+## D65 — Hotkey-only features get visible buttons
+- date: 2026-09-28
+- status: active
+- source: user request 2026-09-28
+- depends-on: D63
+
+Focus (F), Idea (I), Branch (B), Tentacles (G) and Expand all (E) get a small toolbar in the step header, each button showing its key. The hotkeys stay. Nothing a user needs is reachable only by a hotkey.
+
+<!-- op:id=D66 -->
+## D66 — The single-tentacle Export folds into the Hand off step
+- date: 2026-09-28
+- status: active
+- source: v3 planning 2026-09-28
+- depends-on: D44, D63
+
+There's one path to Octogent. The old Export dialog becomes "Advanced: export to one tentacle" inside the Hand off step, and the board's separate Export button goes away. The export code and D36's managed-block behaviour don't change.
+
+<!-- op:id=D67 -->
+## D67 — v3 is built in three waves after contracts
+- date: 2026-09-28
+- status: active
+- source: v3 planning 2026-09-28
+- depends-on: D35
+
+Each wave starts with its contracts commit of throwing stubs (D35), then workers write disjoint folders.
+Wave 6 (launch): octogent init, runtime.json lookup, terminal launcher, Run Octogent button, Retry apply.
+Wave 7 (entry and import): home screen, new project folder, import sources, ingest pass, maturity, What I understood review, INGEST.md, gap-focused kickoff.
+Wave 8 (guidance): deriveWorkflow, stepper, next-action bar, step views, hotkey buttons, Export in Hand off, the full e2e:v3 gate.
+Wave 6 is the smallest and unblocks handoff; wave 8 needs 6 and 7, so it goes last.
+
+<!-- op:id=D68 -->
+## D68 — v3 live gate: e2e:v3
+- date: 2026-09-28
+- status: active
+- source: v3 planning 2026-09-28
+- depends-on: D39, D67
+
+Like e2e:v2, it runs a private Octogent and Octoplan with temp homes and never touches the user's setup. It covers four things. First, a new project from an idea, created in a temp folder, reaching Interview with a card. Second, an import of a fixture set with three maturities (a one-line idea file, a half-plan folder, a small built repo with a spec outside it), checking the maturity, the found/inferred items with sources, one disagreement gap, Apply and a gap-focused first round. Third, Run Octogent with a fake terminal launcher that runs octogent headless, reaching Running :port from runtime.json and then Apply succeeding. Fourth, headless screenshots of the home screen, the stepper at each step, and the review screen.

@@ -2,47 +2,47 @@
 
 Includes every answer marked tentative.
 
-<!-- op:id=R1 -->
-## R1 — Workers don't cite D-ids, so drift badges lie
-- likelihood: high
-- impact: medium
-- origin: Q41
-- status: open
-
-If tentacle workers omit decision ids in commits, D26 marks implemented work as untouched. Mitigation: stamp ids into every todo line, and have the harvest pass flag uncited commits.
-
-<!-- op:id=R2 -->
-## R2 — Harvest burns tokens and proposes noise
-- likelihood: medium
-- impact: medium
-- origin: Q41
-- status: open
-
-The headless pass (D31) runs on every refresh with new commits and may propose trivial candidates. Mitigation: run only with new commits since the last mark, cap candidates per run, and feed rejected titles back as "don't propose".
-
-<!-- op:id=R3 -->
-## R3 — Collapsed UI hides the why behind questions
-- likelihood: medium
-- impact: medium
-- origin: Q41
-- status: open
-
-The dock, prose digest and answer chips (D14/D15/D25) may hide the reasoning needed to answer well. Mitigation: the dock shows the latest prose digest line above the round, plus an expand-all hotkey.
-
-<!-- op:id=R4 -->
-## R4 — Injected digest confuses Claude
+<!-- op:id=R6 -->
+## R6 — Ingest misreads a mature plan
 - likelihood: medium
 - impact: high
-- origin: Q41
+- origin: D55
 - status: open
 
-Claude may re-ask digest items, treat stale decisions as active, or over-cite. Mitigation: the digest labels its status explicitly, and a live gate runs on a repo with existing decisions and checks that no settled decision is re-asked.
+A detailed spec may come out as a handful of vague goals, or inferred items may pass for decisions. Mitigation: every found item carries a source quote, inferred items are marked tentative (D56), and nothing is written until the user applies the review.
 
-<!-- op:id=R5 -->
-## R5 — One-week budget for three waves is tight
+<!-- op:id=R7 -->
+## R7 — Terminal launch differs on each OS and terminal
+- likelihood: medium
+- impact: medium
+- origin: D59
+- status: open
+
+Only Windows is checked live (DOD9). macOS and Linux launchers may fail on some setups. Mitigation: the launcher is one small module with an injected spawn, every failure falls back to showing the command with a copy button, and e2e uses a fake launcher.
+
+<!-- op:id=R8 -->
+## R8 — The derived step disagrees with the user's sense of progress
 - likelihood: medium
 - impact: low
-- origin: Q47
+- origin: D62
 - status: open
 
-Waves 1–2 took about 2 days, but wave 4 adds a headless harvest pass and wave 5 adds drift, which depends on worker citation habits (R1). If it slips, wave 5's drift/History is the part to defer.
+The rules in deriveWorkflow are guesses (G3). Mitigation: steps never block (D63), each shows its reason, and the rules are one pure function with table tests, so they're cheap to tune.
+
+<!-- op:id=R9 -->
+## R9 — Import is slow or costly on big folders
+- likelihood: medium
+- impact: medium
+- origin: D53
+- status: open
+
+A monorepo plus extra folders can burn many turns. Mitigation: the server-side inventory, doc-first reading, caps (G5), and a visible progress line with a Cancel button during the pass.
+
+<!-- op:id=R10 -->
+## R10 — The trust dialog stalls Octogent's first terminal
+- likelihood: high
+- impact: medium
+- origin: D61
+- status: open
+
+A known gotcha: in a folder Claude hasn't trusted yet, the first tentacle terminal waits on the untrusted-folder dialog and initial prompts die. Mitigation: the Build step shows a reminder to accept it, and new projects created by Octoplan are the most likely to hit it.

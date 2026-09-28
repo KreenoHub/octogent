@@ -39,25 +39,38 @@ export const HomeScreen = () => {
   );
 };
 
-/** Sessions grouped by repo, the most recently started first. */
-export const recentProjects = (sessions: readonly Session[]) => {
+export type RecentProject = { repoPath: string; latest: Session | null; count: number };
+
+/**
+ * Sessions grouped by repo, the most recently started first, then repos that only have a plan
+ * (an import still waiting for review has no session yet, and must stay reachable).
+ */
+export const recentProjects = (
+  sessions: readonly Session[],
+  planRepos: readonly string[] = [],
+): RecentProject[] => {
   const byRepo = new Map<string, Session[]>();
   for (const session of sessions) {
     const list = byRepo.get(session.repoPath) ?? [];
     list.push(session);
     byRepo.set(session.repoPath, list);
   }
-  return [...byRepo.entries()]
+  const withSessions = [...byRepo.entries()]
     .map(([repoPath, list]) => {
       const sorted = [...list].sort((a, b) => b.startedAt.localeCompare(a.startedAt));
       return { repoPath, latest: sorted[0] as Session, count: list.length };
     })
     .sort((a, b) => b.latest.startedAt.localeCompare(a.latest.startedAt));
+  const known = new Set(withSessions.map((p) => p.repoPath.toLowerCase()));
+  const planOnly = planRepos
+    .filter((repoPath) => !known.has(repoPath.toLowerCase()))
+    .map((repoPath) => ({ repoPath, latest: null, count: 0 }));
+  return [...withSessions, ...planOnly];
 };
 
 const RecentProjects = () => {
-  const { sessions, planByRepo, setActiveSession, setHome } = useOctoplan();
-  const projects = recentProjects(sessions);
+  const { sessions, planByRepo, setActiveSession, setActiveRepo, setHome } = useOctoplan();
+  const projects = recentProjects(sessions, Object.keys(planByRepo));
   if (projects.length === 0) return null;
   return (
     <section className="op-home-recent" aria-label="Recent projects">
@@ -71,14 +84,17 @@ const RecentProjects = () => {
                 type="button"
                 className="op-home-project"
                 onClick={() => {
-                  setActiveSession(latest.id);
+                  if (latest) setActiveSession(latest.id);
+                  else setActiveRepo(repoPath);
                   setHome(false);
                 }}
               >
                 <span className="op-home-project-name">{repoName(repoPath)}</span>
                 <span className="op-home-project-path">{repoPath}</span>
                 <span className="op-home-project-meta">
-                  {count} session{count === 1 ? "" : "s"} · last: {latest.title}
+                  {latest
+                    ? `${count} session${count === 1 ? "" : "s"} · last: ${latest.title}`
+                    : "no sessions yet"}
                   {ingest?.status === "draft" ? " · import waiting for review" : ""}
                   {ingest?.status === "applied"
                     ? ` · imported (${MATURITY_LABELS[ingest.maturity]})`

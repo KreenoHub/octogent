@@ -10,7 +10,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFakeTransport } from "../../web/src/app/transport";
 import { OctoplanProvider, useOctoplan } from "../../web/src/app/useOctoplan";
 import { CockpitLayout } from "../../web/src/components/CockpitLayout";
-import { HomeScreen, suggestName } from "../../web/src/components/home/HomeScreen";
+import {
+  HomeScreen,
+  recentProjects,
+  suggestName,
+} from "../../web/src/components/home/HomeScreen";
 import {
   INGEST_SAVE_DEBOUNCE_MS,
   IngestReview,
@@ -84,6 +88,27 @@ describe("home screen (D50–D52)", () => {
         pastes: ["sync?"],
         gitInit: false,
       },
+    ]);
+  });
+
+  it("lists repos with only a plan (an import awaiting review) after the ones with sessions", () => {
+    const s = (id: string, repoPath: string, startedAt: string) => ({
+      id,
+      title: id,
+      mode: "deep-interview" as const,
+      repoPath,
+      status: "idle" as const,
+      startedAt,
+    });
+    expect(
+      recentProjects(
+        [s("a", "C:\\old", "2026-09-01T00:00:00Z"), s("b", "C:\\new", "2026-09-20T00:00:00Z")],
+        ["C:\\NEW", REPO],
+      ).map((p) => [p.repoPath, p.latest?.id ?? null]),
+    ).toEqual([
+      ["C:\\new", "b"],
+      ["C:\\old", "a"],
+      [REPO, null],
     ]);
   });
 

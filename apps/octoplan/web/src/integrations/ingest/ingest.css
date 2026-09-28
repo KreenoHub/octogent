@@ -187,3 +187,19 @@
   font-size: 0.72rem;
   color: var(--term-red);
 }
+
+/* Inline in the Understand step (D63): the pane scrolls, and the apply footer stays in view. */
+.op-step-pane .op-ig {
+  max-height: none;
+}
+
+.op-step-pane .op-ig-body {
+  overflow: visible;
+}
+
+.op-step-pane .op-ig-foot {
+  position: sticky;
+  bottom: 0;
+  padding-bottom: 0.5rem;
+  background: var(--bg-canvas);
+}

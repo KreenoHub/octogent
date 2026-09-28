@@ -165,3 +165,29 @@ export const createTerminalLauncher = (deps: TerminalLauncherDeps = {}): Termina
     },
   };
 };
+
+/**
+ * Test-only (the e2e gate, D68): "opens a terminal" by starting `octogent` hidden in the
+ * workspace, with `overrides` (a temp home, a private port) on top of the launch env. The
+ * command is resolved like exec.ts does, so a Windows .cmd shim runs through node, no shell.
+ */
+export const createHeadlessOctogentSpawn =
+  (overrides: NodeJS.ProcessEnv): SpawnDetached =>
+  async (_spec, { cwd, env }) => {
+    const merged = { ...env, ...overrides, OCTOGENT_NO_OPEN: "1" };
+    const resolved = resolveCommand(OCTOGENT, [], {
+      platform: process.platform,
+      env: merged,
+      nodePath: process.execPath,
+    });
+    if ("error" in resolved) return { ok: false, error: resolved.error };
+    return nodeSpawnDetached(
+      {
+        file: resolved.file,
+        args: resolved.args,
+        detached: true,
+        ...(resolved.verbatim ? { verbatim: true } : {}),
+      },
+      { cwd, env: merged },
+    );
+  };

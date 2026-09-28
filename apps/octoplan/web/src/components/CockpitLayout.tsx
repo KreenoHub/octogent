@@ -122,7 +122,11 @@ export const CockpitLayout = () => {
       case "write-goal": {
         const session = repoSession();
         if (session && session.status !== "ended" && session.status !== "error") {
-          sendClientEvent({ type: "send-message", sessionId: session.id, text: WRITE_GOAL_REQUEST });
+          sendClientEvent({
+            type: "send-message",
+            sessionId: session.id,
+            text: WRITE_GOAL_REQUEST,
+          });
         } else {
           startInterview("Write GOAL.md from the plan so far");
         }
@@ -236,7 +240,19 @@ export const CockpitLayout = () => {
       </main>
       {home ? null : (
         <NextActionBar
-          workflow={workflow}
+          workflow={
+            // Already on the review: point at its Apply button instead of reopening it.
+            workflow && selected === "understand" && workflow.next.kind === "open-review"
+              ? {
+                  ...workflow,
+                  next: {
+                    ...workflow.next,
+                    kind: "wait",
+                    label: "Keep, edit or drop items, then Apply",
+                  },
+                }
+              : workflow
+          }
           onAction={onAction}
           href={activeRepo ? state.octogentStatusByRepo[activeRepo]?.url : undefined}
         />

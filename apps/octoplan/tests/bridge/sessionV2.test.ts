@@ -320,3 +320,55 @@ describe("plan digest (D16, D18, D32, D34)", () => {
     expect(withDigest.filter((n) => n !== null)).toEqual([3, 6]);
   });
 });
+
+describe("pending imports after a restart", () => {
+  const ingest = (status: "draft" | "applied") => ({
+    status,
+    createdAt: "2026-09-28T10:00:00.000Z",
+    title: "presentor",
+    why: "",
+    maturity: "partial-plan" as const,
+    maturityReasons: "",
+    coverage: [],
+    sources: [],
+    items: [],
+  });
+
+  it("reopens only known repos whose import is still waiting for review", async () => {
+    const pending = tempRepo();
+    const applied = tempRepo();
+    const empty = tempRepo();
+    cleanups.push(pending.cleanup, applied.cleanup, empty.cleanup);
+    for (const [repo, status] of [
+      [pending, "draft"],
+      [applied, "applied"],
+    ] as const) {
+      const store = createFsPlanStore(repo.dir);
+      await store.writeIngest(ingest(status));
+      await store.dispose();
+    }
+    const { query } = createFakeQuery(async function* () {});
+    const { manager } = managerFor({
+      ...realDeps(query),
+      ideaRegistry: {
+        registerRepo: async () => {},
+        listRepos: async () => [empty.dir, applied.dir, pending.dir],
+        searchIdeas: async () => [],
+      },
+    });
+
+    expect(await manager.reopenPendingImports()).toBe(1);
+    expect(await manager.reopenPendingImports()).toBe(0);
+    const replayed: ServerEvent[] = [];
+    await manager.replay((e) => replayed.push(e));
+    const plans = replayed.filter(isType("plan"));
+    expect(plans.map((e) => e.repoPath)).toEqual([pending.dir]);
+    expect(plans[0]?.plan.ingest?.status).toBe("draft");
+  });
+
+  it("does nothing without a project registry", async () => {
+    const { query } = createFakeQuery(async function* () {});
+    const { manager } = managerFor(realDeps(query));
+    expect(await manager.reopenPendingImports()).toBe(0);
+  });
+});

@@ -74,24 +74,32 @@ const withSession = (overrides: Parameters<typeof session>[0] = {}) => {
   return view;
 };
 
-describe("hotkey bar", () => {
-  it("lists every global key", () => {
+describe("tool buttons (D65)", () => {
+  it("gives every hotkey a visible button that does the same thing", () => {
     renderCockpit();
-    const nav = screen.getByRole("navigation", { name: "Octoplan hotkeys" });
+    const tools = screen.getByRole("toolbar", { name: "Octoplan tools" });
     expect(
-      within(nav)
-        .getAllByText(/^\[/)
+      within(tools)
+        .getAllByRole("button")
         .map((el) => el.textContent),
-    ).toEqual([
-      "[F] FOCUS",
-      "[I] IDEA",
-      "[B] BRANCH",
-      "[G] GRAPH",
-      "[E] EXPAND ALL",
-      "[ESC] CLOSE",
-    ]);
+    ).toEqual(["F Focus", "I Idea", "B Branch", "G Tentacles", "E Expand all"]);
+    fireEvent.click(within(tools).getByRole("button", { name: "I Idea" }));
+    expect(screen.getByRole("dialog", { name: /idea/i })).toBeInTheDocument();
+    fireEvent.click(within(tools).getByRole("button", { name: "E Expand all" }));
+    expect(within(tools).getByRole("button", { name: "E Expand all" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 });
+
+/** Opens a workflow step from the stepper (D63). */
+const openStep = (label: RegExp) =>
+  fireEvent.click(
+    within(screen.getByRole("list", { name: "Workflow steps" })).getByRole("button", {
+      name: label,
+    }),
+  );
 
 describe("branch graph (G)", () => {
   it("requests the graph on open, shows loading, refreshes on demand and never while closed", () => {
@@ -192,8 +200,11 @@ describe("brainstorm board", () => {
 describe("stages", () => {
   it("sends generate-stages and lists title + goal with a copy button", () => {
     const { transport, emit } = withSession();
-    fireEvent.click(screen.getByRole("button", { name: "Stages" }));
-    expect(transport.sent).toEqual([{ type: "generate-stages", repoPath: ALPHA }]);
+    openStep(/Stages/);
+    fireEvent.click(screen.getByRole("button", { name: "Generate stages" }));
+    expect(transport.sent.filter((e) => e.type === "generate-stages")).toEqual([
+      { type: "generate-stages", repoPath: ALPHA },
+    ]);
     const stages = screen.getByRole("region", { name: "Stages" });
     expect(stages).toHaveTextContent("Generating stages…");
 
@@ -245,7 +256,9 @@ describe("export to Octogent", () => {
       message: "old",
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Export to Octogent" }));
+    // D66: single-tentacle export lives under the Hand off step's "Advanced".
+    openStep(/Hand off/);
+    fireEvent.click(screen.getByRole("button", { name: "Export to one tentacle…" }));
     const dialog = screen.getByRole("dialog", { name: "Export to Octogent" });
     const id = within(dialog).getByLabelText("Tentacle id");
     const tasks = within(dialog).getByLabelText("Tasks (one per line)");
@@ -255,11 +268,11 @@ describe("export to Octogent", () => {
     fireEvent.change(id, { target: { value: "Bad Id" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Export" }));
     expect(within(dialog).getByRole("alert")).toHaveTextContent(/lowercase/);
-    expect(transport.sent).toEqual([]);
+    expect(transport.sent.filter((e) => e.type === "export-tentacle")).toEqual([]);
 
     fireEvent.change(id, { target: { value: "alpha" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Export" }));
-    expect(transport.sent).toEqual([
+    expect(transport.sent.filter((e) => e.type === "export-tentacle")).toEqual([
       {
         type: "export-tentacle",
         repoPath: ALPHA,

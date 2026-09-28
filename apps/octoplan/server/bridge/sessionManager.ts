@@ -180,6 +180,8 @@ export const createSessionManager = (deps: BridgeDeps, emit: Broadcast) => {
   const emitPlan = async (repoPath: string, store: PlanStore) => {
     try {
       broadcast({ type: "plan", repoPath, plan: await store.snapshot() });
+      // v3 (D62): the stepper needs to know stages exist without a generate in this session.
+      broadcast({ type: "stages", repoPath, stages: await store.readStages() });
     } catch (error) {
       reportError(`Could not read docs/plan: ${errorText(error)}`);
     }
@@ -815,6 +817,7 @@ export const createSessionManager = (deps: BridgeDeps, emit: Broadcast) => {
       for (const [repoPath, store] of stores) {
         try {
           send({ type: "plan", repoPath, plan: await store.snapshot() });
+          send({ type: "stages", repoPath, stages: await store.readStages() });
         } catch {
           // A broken plan file must not block the rest of the replay.
         }

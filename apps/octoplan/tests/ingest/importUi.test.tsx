@@ -231,7 +231,7 @@ describe("What I understood (D56)", () => {
 });
 
 describe("cockpit wiring (D50, D56)", () => {
-  it("moves to the imported repo on focus-repo and opens the review; Later hides it", () => {
+  it("moves to the imported repo on focus-repo and shows the review as the Understand step", () => {
     const Probe = () => {
       const { activeRepo, home } = useOctoplan();
       return <output data-testid="probe">{`${activeRepo}|${home}`}</output>;
@@ -249,17 +249,29 @@ describe("cockpit wiring (D50, D56)", () => {
       { type: "plan", repoPath: REPO, plan: snapshot(draft()) },
     );
     expect(screen.getByTestId("probe")).toHaveTextContent(`${REPO}|false`);
-    expect(screen.getByRole("dialog", { name: "What I understood" })).toBeInTheDocument();
+    const steps = screen.getByRole("list", { name: "Workflow steps" });
+    expect(within(steps).getByRole("button", { name: /Understand/ })).toHaveAttribute(
+      "aria-current",
+      "step",
+    );
+    expect(screen.getByRole("region", { name: "Understand step" })).toBeInTheDocument();
+    expect(screen.getByRole("contentinfo", { name: "Next step" })).toHaveTextContent(
+      "Review what Claude understood, then apply.",
+    );
     fireEvent.click(screen.getByRole("button", { name: "Later" }));
-    expect(screen.queryByRole("dialog", { name: "What I understood" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Review import" }));
-    expect(screen.getByRole("dialog", { name: "What I understood" })).toBeInTheDocument();
-    // Applied: the review goes away by itself.
+    expect(screen.queryByRole("region", { name: "Understand step" })).toBeNull();
+    fireEvent.click(within(steps).getByRole("button", { name: /Understand/ }));
+    expect(screen.getByRole("region", { name: "Understand step" })).toBeInTheDocument();
+    // Applied: the workflow moves on to the interview by itself.
     emit({
       type: "plan",
       repoPath: REPO,
       plan: snapshot(draft({ status: "applied", appliedAt: "2026-09-28T11:00:00.000Z" })),
     });
-    expect(screen.queryByRole("dialog", { name: "What I understood" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Understand step" })).toBeNull();
+    expect(within(steps).getByRole("button", { name: /Interview/ })).toHaveAttribute(
+      "aria-current",
+      "step",
+    );
   });
 });

@@ -171,7 +171,14 @@ describe("board sections (D9, D13)", () => {
         .map((li) => li.textContent),
     ).toEqual(["I1Offline modeinbox", "I2Voice answersstarred"]);
 
-    const stages = within(board()).getByRole("region", { name: "Stages" });
+    // v3 (D63): stages live in the Stages step, not on the board.
+    expect(within(board()).queryByRole("region", { name: "Stages" })).not.toBeInTheDocument();
+    fireEvent.click(
+      within(screen.getByRole("list", { name: "Workflow steps" })).getByRole("button", {
+        name: /Stages/,
+      }),
+    );
+    const stages = screen.getByRole("region", { name: "Stages" });
     expect(within(stages).getAllByRole("listitem")).toHaveLength(2);
 
     const branches = openSection("Branches");
@@ -277,22 +284,24 @@ describe("drift badges and History tab (D24)", () => {
   });
 });
 
-describe("hand off to Octogent (D44)", () => {
-  it("shows the button only with a GOAL.md, opens the wizard in a modal and closes it", () => {
-    const { emit } = withAggregate({ goal: null });
+describe("hand off to Octogent (D44, v3 D63)", () => {
+  it("lives in the Hand off step, not on the board, and closing it moves on to Build", () => {
+    const { emit } = withAggregate();
+    emit({ type: "plan", repoPath: ALPHA, plan: aggregatePlan() });
     expect(
       within(board()).queryByRole("button", { name: "Hand off to Octogent" }),
     ).not.toBeInTheDocument();
+    expect(within(board()).queryByRole("button", { name: "Export to Octogent" })).toBeNull();
 
-    emit({ type: "plan", repoPath: ALPHA, plan: aggregatePlan() });
-    fireEvent.click(within(board()).getByRole("button", { name: "Hand off to Octogent" }));
-    const dialog = screen.getByRole("dialog", { name: "Hand off to Octogent" });
-    expect(within(dialog).getByTestId("handoff-slot")).toHaveAttribute("data-repo", ALPHA);
-    fireEvent.click(within(dialog).getByRole("button", { name: "Close wizard" }));
-    expect(screen.queryByRole("dialog", { name: "Hand off to Octogent" })).not.toBeInTheDocument();
-
-    fireEvent.click(within(board()).getByRole("button", { name: "Hand off to Octogent" }));
-    fireEvent.keyDown(window, { key: "Escape" });
-    expect(screen.queryByTestId("handoff-slot")).not.toBeInTheDocument();
+    const steps = screen.getByRole("list", { name: "Workflow steps" });
+    fireEvent.click(within(steps).getByRole("button", { name: /Hand off/ }));
+    const pane = screen.getByRole("region", { name: "Hand off step" });
+    expect(within(pane).getByTestId("handoff-slot")).toHaveAttribute("data-repo", ALPHA);
+    fireEvent.click(within(pane).getByRole("button", { name: "Close wizard" }));
+    expect(screen.getByRole("region", { name: "Build step" })).toBeInTheDocument();
+    expect(within(steps).getByRole("button", { name: /Build/ })).toHaveAttribute(
+      "aria-current",
+      "step",
+    );
   });
 });

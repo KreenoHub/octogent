@@ -9,3 +9,4 @@ export * from "./markdown/codecs";
 export * from "./markdown/documents";
 export * from "./markdown/planFiles";
 export * from "./markdown/ingest";
+export * from "./workflow";

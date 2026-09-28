@@ -1,0 +1,465 @@
+<title>Octoplan + Octogent Handbook</title>
+<meta name="description" content="Plan a project with Claude in Octoplan, hand it off, and watch Octogent's agents build it: every screen, step by step.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;700;800&display=swap">
+<style>
+  /* One deliberate look, matching the two apps (Octogent's retro-pixel tokens): dark only. */
+  :root {
+    color-scheme: dark;
+    --bg: #050607;
+    --surface: #0b0d10;
+    --surface-2: #12151b;
+    --border: #2b2f36;
+    --text: #e6e8ec;
+    --muted: #a9b0ba;
+    --amber: #faa32c;
+    --red: #8c0b12;
+    --green: #25d366;
+    --pixel: "Silkscreen", "JetBrains Mono", ui-monospace, monospace;
+    --mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+    --sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.65 var(--sans);
+    padding-inline: 16px;
+  }
+  a { color: var(--amber); }
+  a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  code, kbd { font-family: var(--mono); font-size: 0.88em; }
+  code { background: var(--surface-2); border: 1px solid var(--border); padding: 0.05em 0.35em; overflow-wrap: anywhere; }
+  kbd {
+    display: inline-block; min-width: 1.8em; text-align: center; padding: 0.05em 0.45em;
+    color: var(--amber); background: var(--surface); border: 1px solid var(--border); border-bottom-width: 3px;
+  }
+
+  .wrap { max-width: 1180px; margin: 0 auto; }
+
+  /* ---------- masthead ---------- */
+  .top {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding-block: 18px; border-bottom: 1px solid var(--border);
+    font-family: var(--pixel); color: var(--amber); letter-spacing: 0.08em;
+  }
+  .top .plus { color: var(--text); }
+  .top .ver { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--muted); letter-spacing: 0; }
+  .hero { padding-block: 56px 36px; display: grid; gap: 22px; }
+  .hero h1 {
+    margin: 0; font-family: var(--pixel); font-weight: 400; color: var(--amber);
+    font-size: clamp(34px, 6vw, 64px); line-height: 1.05; text-wrap: balance;
+    text-shadow: 0 0 40px #faa32c33;
+  }
+  .hero p { margin: 0; max-width: 62ch; font-size: 19px; color: var(--text); }
+  .hero .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; max-width: 880px; }
+  .app {
+    padding: 16px 18px; background: var(--surface); border: 1px solid var(--border);
+    display: grid; gap: 6px;
+  }
+  .app b { font-family: var(--pixel); font-weight: 400; letter-spacing: 0.06em; }
+  .app.plan b { color: var(--amber); }
+  .app.build b { color: var(--green); }
+  .app span { color: var(--muted); font-size: 15px; }
+
+  /* the real stepper, as the app draws it */
+  .stepper { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 0; list-style: none; }
+  .stepper a {
+    display: inline-flex; gap: 8px; align-items: center; padding: 6px 12px;
+    font-family: var(--mono); font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--muted); text-decoration: none; border: 1px solid var(--border); background: var(--surface);
+  }
+  .stepper a:hover { color: var(--amber); border-color: var(--amber); }
+  .stepper .n { color: var(--amber); }
+
+  .video {
+    display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+    padding: 12px 16px; border: 1px solid var(--border); border-left: 4px solid var(--amber); background: var(--surface);
+    max-width: 880px; color: var(--muted); font-size: 15px;
+  }
+  .video strong { color: var(--text); }
+
+  /* ---------- layout ---------- */
+  .layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 48px; padding-block: 24px 80px; }
+  nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); align-self: start; }
+  nav.toc h2 { margin: 0 0 10px; font-family: var(--pixel); font-weight: 400; font-size: 13px; letter-spacing: 0.12em; color: var(--muted); }
+  nav.toc ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+  nav.toc a {
+    display: block; padding: 4px 10px; font-size: 14px; color: var(--muted); text-decoration: none;
+    border-left: 2px solid transparent;
+  }
+  nav.toc a:hover { color: var(--text); border-left-color: var(--amber); }
+  nav.toc .grp { margin-top: 10px; padding: 4px 10px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; color: var(--amber); }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; gap: 8px; }
+    nav.toc { position: static; border: 1px solid var(--border); padding: 12px; background: var(--surface); }
+  }
+
+  main { min-width: 0; display: grid; gap: 64px; }
+  section { display: grid; gap: 18px; scroll-margin-top: 20px; }
+  section > p, section > ul, section > ol { margin: 0; max-width: 68ch; }
+  section li + li { margin-top: 6px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; color: var(--amber); text-transform: uppercase; }
+  h2 {
+    margin: 0; font-family: var(--pixel); font-weight: 400; font-size: clamp(24px, 3.4vw, 34px);
+    line-height: 1.15; color: var(--text); text-wrap: balance;
+  }
+  h2 .step { color: var(--amber); }
+  h3 { margin: 10px 0 0; font-size: 19px; font-weight: 800; text-wrap: balance; }
+
+  figure { margin: 0; display: grid; gap: 8px; }
+  figure img { display: block; width: 100%; height: auto; border: 1px solid var(--border); background: var(--surface); }
+  figcaption { font-size: 13px; color: var(--muted); font-family: var(--mono); }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+
+  .note {
+    max-width: 68ch; padding: 12px 16px; background: var(--surface);
+    border: 1px solid var(--border); border-left: 4px solid var(--amber);
+  }
+  .note.warn { border-left-color: var(--red); }
+  .note.good { border-left-color: var(--green); }
+  .note p { margin: 0; }
+
+  .levels { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 0; list-style: none; }
+  .levels li {
+    margin: 0; padding: 6px 10px; border: 1px solid currentColor; font-family: var(--mono); font-size: 13px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .levels li span { text-transform: none; letter-spacing: 0; color: var(--muted); margin-left: 6px; }
+  .l1 { color: var(--muted); } .l2 { color: #d9dde3; } .l3 { color: var(--amber); } .l4, .l5 { color: var(--green); }
+
+  .tbl { overflow-x: auto; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--border); }
+  th { font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--amber); background: var(--surface); }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { white-space: nowrap; }
+
+  pre.cmd {
+    margin: 0; padding: 12px 16px; background: var(--surface); border: 1px solid var(--border);
+    font-family: var(--mono); font-size: 14px; color: var(--green); overflow-x: auto; max-width: 68ch;
+  }
+  pre.cmd::before { content: "> "; color: var(--muted); }
+
+  footer { padding-block: 28px; border-top: 1px solid var(--border); color: var(--muted); font-size: 14px; }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <span>OCTOPLAN</span><span class="plus">+</span><span>OCTOGENT</span>
+    <span class="ver">handbook · Octoplan v3</span>
+  </header>
+
+  <div class="hero">
+    <h1>Plan it. Hand it off. Watch it get built.</h1>
+    <p>You describe what you want. Claude asks you clear questions, one card at a time, and writes a plan. Then a team of Claude agents builds it, each working through its own to-do list. This handbook walks through every screen, from a brand-new idea (or a half-finished project) to agents writing code.</p>
+    <div class="two">
+      <div class="app plan"><b>OCTOPLAN · THE PLANNER</b><span>Question cards, a plan board, and a seven-step bar that shows where you are.</span></div>
+      <div class="app build"><b>OCTOGENT · THE BUILDERS</b><span>Tentacles (workstreams) with to-do lists, agents, and one "octopus" coordinating them.</span></div>
+    </div>
+    <ol class="stepper" aria-label="The seven steps">
+      <li><a href="#start"><span class="n">1</span> Start</a></li>
+      <li><a href="#understand"><span class="n">2</span> Understand</a></li>
+      <li><a href="#interview"><span class="n">3</span> Interview</a></li>
+      <li><a href="#goal"><span class="n">4</span> Goal</a></li>
+      <li><a href="#stages"><span class="n">5</span> Stages</a></li>
+      <li><a href="#handoff"><span class="n">6</span> Hand off</a></li>
+      <li><a href="#build"><span class="n">7</span> Build</a></li>
+    </ol>
+    <div class="video"><strong>Prefer watching?</strong> The 5-minute video tour is in the repo at <code>docs/octoplan/tutorial/octoplan-v3-tutorial.mp4</code>.</div>
+  </div>
+
+  <div class="layout">
+    <nav class="toc" aria-label="Contents">
+      <h2>CONTENTS</h2>
+      <ol>
+        <li><a href="#need">What you need</a></li>
+        <li><a href="#run">Start both apps</a></li>
+        <li><a href="#map">The seven steps</a></li>
+        <li class="grp">PLAN IT</li>
+        <li><a href="#start">1 · Start</a></li>
+        <li><a href="#understand">2 · Understand</a></li>
+        <li><a href="#interview">3 · Interview</a></li>
+        <li><a href="#goal">4 · Goal</a></li>
+        <li><a href="#stages">5 · Stages</a></li>
+        <li class="grp">HAND IT OFF</li>
+        <li><a href="#handoff">6 · Hand off</a></li>
+        <li class="grp">BUILD IT</li>
+        <li><a href="#build">7 · Build</a></li>
+        <li><a href="#octogent">Inside Octogent</a></li>
+        <li><a href="#loop">Closing the loop</a></li>
+        <li class="grp">REFERENCE</li>
+        <li><a href="#more">Everything else</a></li>
+        <li><a href="#files">Where things are saved</a></li>
+        <li><a href="#keys">Keyboard</a></li>
+        <li><a href="#help">Troubleshooting</a></li>
+      </ol>
+    </nav>
+
+    <main>
+      <section id="need">
+        <div class="eyebrow">Before you begin</div>
+        <h2>What you need</h2>
+        <div class="tbl"><table>
+          <thead><tr><th>You need</th><th>Why</th><th>Check</th></tr></thead>
+          <tbody>
+            <tr><td>Node.js 22+ and pnpm</td><td>Both apps are Node apps</td><td><code>node -v</code>, <code>pnpm -v</code></td></tr>
+            <tr><td>Claude Code, logged in</td><td>Octoplan and the agents <em>are</em> Claude Code</td><td><code>claude</code> opens without asking you to log in</td></tr>
+            <tr><td>git</td><td>Projects are git repos; the history feeds "harvest"</td><td><code>git --version</code></td></tr>
+            <tr><td>The octogent repo</td><td>Octoplan lives inside it (<code>apps/octoplan</code>)</td><td><code>git clone https://github.com/KreenoHub/octogent</code></td></tr>
+            <tr><td>The <code>octogent</code> command</td><td>For the Run Octogent button</td><td>In the repo: <code>pnpm install &amp;&amp; pnpm build &amp;&amp; npm install -g .</code></td></tr>
+            <tr><td>GitHub CLI <code>gh</code> (optional)</td><td>Pull-request badges on tentacle cards</td><td><code>gh auth status</code></td></tr>
+          </tbody>
+        </table></div>
+        <p>Both apps only listen on <code>127.0.0.1</code>. Nothing leaves your computer except what Claude Code itself sends.</p>
+      </section>
+
+      <section id="run">
+        <div class="eyebrow">Before you begin</div>
+        <h2>Start both apps</h2>
+        <p><strong>Octoplan</strong>, from the octogent repo:</p>
+        <pre class="cmd">pnpm install</pre>
+        <pre class="cmd">pnpm --filter @octogent/octoplan dev</pre>
+        <p>Then open <strong>http://127.0.0.1:5190</strong>. The server itself runs on port 8790.</p>
+        <p><strong>Octogent</strong> you don't have to start yourself. Octoplan's <strong>Run Octogent</strong> button starts it in the right folder (step 7). By hand: go into your project and run <code>octogent</code>; its dashboard opens at http://127.0.0.1:8787, or the next free port.</p>
+      </section>
+
+      <section id="map">
+        <div class="eyebrow">The big picture</div>
+        <h2>Seven steps, always visible</h2>
+        <p>Once a project is open, a bar across the top shows where you are, and a bar at the bottom always offers the one next move. When in doubt, press that button.</p>
+        <figure><img src="09-interview.png" alt="Octoplan with the seven-step bar at the top and the next-action bar at the bottom" loading="lazy"><figcaption>The step bar (top), the tools (top right), the next-action bar (bottom).</figcaption></figure>
+        <div class="tbl"><table>
+          <thead><tr><th>Step</th><th>What happens</th><th>Done when</th></tr></thead>
+          <tbody>
+            <tr><td>1 Start</td><td>Pick a project, or make one (opens Home)</td><td>a project is open</td></tr>
+            <tr><td>2 Understand</td><td>Imports only: check what Claude understood from your files</td><td>the import is applied (skipped for new projects)</td></tr>
+            <tr><td>3 Interview</td><td>Claude asks question cards; you answer</td><td>every topic at least partly covered, or the goal is written</td></tr>
+            <tr><td>4 Goal</td><td>Claude writes GOAL.md with a checkable definition of done</td><td>GOAL.md has done-when items</td></tr>
+            <tr><td>5 Stages</td><td>The plan becomes step-by-step build prompts</td><td>stages exist</td></tr>
+            <tr><td>6 Hand off</td><td>The plan becomes Octogent tentacles and to-dos</td><td>the handoff is applied</td></tr>
+            <tr><td>7 Build</td><td>Octogent's agents work; you watch progress</td><td>every handed-off to-do is ticked</td></tr>
+          </tbody>
+        </table></div>
+        <p>Each step shows ✓ done, ● current, ○ still to come, or – skipped; hover one to see why. Steps never lock: click any step to look at it.</p>
+      </section>
+
+      <section id="start">
+        <div class="eyebrow">Plan it · step 1</div>
+        <h2><span class="step">1</span> Start: a new idea, or something that exists</h2>
+        <p>Octoplan opens on <strong>Home</strong> when you have no projects yet; the <strong>Home</strong> button, top left, brings you back any time. Your recent projects are listed underneath, including an import still waiting for review.</p>
+        <figure><img src="01-home.png" alt="The Home screen with two entry paths" loading="lazy"><figcaption>Two ways in.</figcaption></figure>
+
+        <h3>New project from an idea</h3>
+        <figure><img src="02-new-form.png" alt="The new-project form with an idea typed in" loading="lazy"></figure>
+        <ol>
+          <li><strong>Describe the idea.</strong> A sentence or a paragraph is enough.</li>
+          <li><strong>Project name</strong> is suggested from your idea. Any language works; a Hebrew name makes a Hebrew folder name.</li>
+          <li><strong>Create it in</strong> defaults to where your latest project lives.</li>
+          <li>Press <strong>Create and start planning</strong>.</li>
+        </ol>
+        <p>Octoplan creates the folder (it refuses a folder that exists and isn't empty), sets up <strong>git</strong> with a first commit, writes a <strong>README.md</strong> with your idea and an empty <code>docs/plan/</code>, and starts a <strong>Deep interview</strong>. The first question arrives within seconds.</p>
+
+        <h3>Import something that exists</h3>
+        <p>For a repo, a folder of notes, half a plan, a spec you can paste, a chat log.</p>
+        <figure><img src="03-import-form.png" alt="The import form with a main folder, two extra paths and pasted text" loading="lazy"></figure>
+        <ol>
+          <li><strong>Main folder</strong>: a repo or any folder. It becomes the project. Tip: in Windows Explorer, Shift+right-click → <em>Copy as path</em>; the quotes are removed for you.</li>
+          <li><strong>More files or folders</strong>, from anywhere. They're read, not copied.</li>
+          <li><strong>Pasted text</strong>. Each paste is saved as <code>docs/plan/sources/pasted-1.md</code>, <code>pasted-2.md</code>…</li>
+          <li><strong>Set up git</strong> (on by default): if the main folder has no git yet, Octoplan makes one <em>empty</em> commit. Your files are not committed.</li>
+          <li>Press <strong>Import and read</strong>.</li>
+        </ol>
+        <div class="note"><p>Claude reads plans and docs first (READMEs, <code>.md</code>, <code>.txt</code>, specs, PDFs), then manifests, and code only as needed. It never sees dependencies, build output, lockfiles or binaries. Word, PowerPoint, Excel files and images can't be read; they're listed as <em>not read</em> so you can paste their text. Big folders are capped at 400 listed files. The pass is read-only.</p></div>
+      </section>
+
+      <section id="understand">
+        <div class="eyebrow">Plan it · step 2</div>
+        <h2><span class="step">2</span> Understand: check what Claude read</h2>
+        <p>While Claude reads (usually under a minute) the step shows a spinner. You can leave and come back; the draft is saved.</p>
+        <figure><img src="05-review-top.png" alt="What I understood: maturity, title, why and sources" loading="lazy"><figcaption>The verdict, the title and why, and every source with its own rating.</figcaption></figure>
+        <p>First comes a <strong>maturity</strong> verdict for the whole import and for each source. It decides how the interview starts: a detailed plan gets fewer questions, a built project is asked "what's next?".</p>
+        <ul class="levels">
+          <li class="l1">Raw idea<span>a sentence or a few lines</span></li>
+          <li class="l2">Notes<span>scattered thoughts</span></li>
+          <li class="l3">Partial plan<span>some decisions, big holes</span></li>
+          <li class="l4">Detailed plan<span>mostly settled</span></li>
+          <li class="l5">Built<span>working code exists</span></li>
+        </ul>
+        <p>Then the items Claude found, grouped into Goals, Non-goals, Decisions, Gaps and Risks. For each one you can <strong>keep</strong> it or untick to <strong>drop</strong> it, <strong>edit</strong> the title and details, and see its evidence: <em>Found in file "exact quote"</em>, or <em>Inferred: reason</em>.</p>
+        <figure><img src="06-review-items.png" alt="Extracted items with keep checkboxes and evidence quotes" loading="lazy"></figure>
+        <div class="pair">
+          <figure><img src="07-review-assumption.png" alt="An inferred item marked as an assumption" loading="lazy"><figcaption>Assumption: Claude's guess. Keep it and it's also recorded as a risk for the interview to confirm.</figcaption></figure>
+          <figure><img src="08-review-disagree.png" alt="A disagreement between sources with a resolve-or-park choice" loading="lazy"><figcaption>Sources disagree: settle it (Resolved) or leave it for the interview (Parked) before applying.</figcaption></figure>
+        </div>
+        <p>Items marked <strong>already in plan (D3)</strong> match something your plan has; they're shown and never written twice. Edits save automatically; <strong>Later</strong> closes the review. When ready, press <strong>Apply N items and start the interview</strong>: the kept items go into <code>docs/plan/</code>, and the interview asks only about what's still open. For a built project, the git history is also scanned for decisions. Importing again later shows only the new items.</p>
+      </section>
+
+      <section id="interview">
+        <div class="eyebrow">Plan it · step 3</div>
+        <h2><span class="step">3</span> Interview: answer question cards</h2>
+        <p>Claude asks rounds of question cards in the <strong>answer dock</strong>, which never scrolls away.</p>
+        <div class="tbl"><table>
+          <thead><tr><th>On a card</th><th>Does</th></tr></thead>
+          <tbody>
+            <tr><td><kbd>1</kbd>–<kbd>9</kbd> or click</td><td>Pick an option. <strong>(Recommended)</strong> is Claude's suggestion</td></tr>
+            <tr><td><kbd>O</kbd></td><td>Type your own answer in <em>Other…</em></td></tr>
+            <tr><td><kbd>T</kbd></td><td>Tentative: you're unsure (also recorded as a risk)</td></tr>
+            <tr><td><kbd>P</kbd></td><td>Park it: decide later, with an assumption Claude can work with</td></tr>
+            <tr><td><kbd>Enter</kbd></td><td>Confirm the round</td></tr>
+            <tr><td>Why this question</td><td>Claude's reasoning</td></tr>
+          </tbody>
+        </table></div>
+        <figure><img src="11-answered.png" alt="Answered rounds folded into chips, grouped tool rows, and the plan board" loading="lazy"><figcaption>Answered rounds fold into chips (click one to revise). Claude's work shows as one line. The board fills in by itself.</figcaption></figure>
+        <p>The <strong>plan board</strong> on the right collects Goals, Decisions, Gaps, Parked items, Risks and Ideas, plus <strong>Coverage</strong>: twelve planning topics that go from empty to partial to covered. <strong>Needs attention</strong> lists anything waiting for you. Press <kbd>F</kbd> for <strong>Focus mode</strong>, just the question, big and centered. You can also type to Claude any time in the box under the conversation.</p>
+        <figure><img src="10-focus.png" alt="Focus mode showing one question" loading="lazy"><figcaption>Focus mode (F).</figcaption></figure>
+      </section>
+
+      <section id="goal">
+        <div class="eyebrow">Plan it · step 4</div>
+        <h2><span class="step">4</span> Goal: the definition of done</h2>
+        <p>When the topics are covered, the next-action bar offers <strong>Ask Claude to write GOAL.md</strong>. Claude writes the title, why, goals, non-goals and a definition of done where every item can be checked by running something. It may ask one or two last questions first.</p>
+        <figure><img src="12-goal.png" alt="The Goal step showing GOAL.md" loading="lazy"></figure>
+      </section>
+
+      <section id="stages">
+        <div class="eyebrow">Plan it · step 5</div>
+        <h2><span class="step">5</span> Stages: build prompts</h2>
+        <p><strong>Generate stages</strong> turns the goal and decisions into step-by-step build prompts, each self-contained and ending with a testing checkpoint. <strong>Copy prompt</strong> puts one on your clipboard for any Claude session.</p>
+        <figure><img src="13-stages.png" alt="The Stages step with a list of stage prompts" loading="lazy"></figure>
+      </section>
+
+      <section id="handoff">
+        <div class="eyebrow">Hand it off · step 6</div>
+        <h2><span class="step">6</span> Hand off to Octogent</h2>
+        <p>The plan becomes Octogent <strong>tentacles</strong> (workstreams) with to-do lists, in four steps.</p>
+        <ol>
+          <li><strong>Generate.</strong> Claude proposes 3–8 tentacles, each owning certain folders, with one-line to-dos that end in "Done when…" and cite their decision (<code>[D12]</code>).</li>
+          <li><strong>Review.</strong> Rename, add or remove tentacles, change their folders, edit, move or delete to-dos. Saved to <code>docs/plan/HANDOFF.md</code>.</li>
+          <li><strong>Apply.</strong> Creates the missing tentacles and writes their to-dos. Applying twice never duplicates, and your own notes are never touched.</li>
+          <li><strong>Done.</strong> Results, <strong>Open Octogent</strong>, and the <strong>octopus prompt</strong> with a Copy button (also <code>docs/plan/OCTOPUS.md</code>).</li>
+        </ol>
+        <figure><img src="15-handoff-review.png" alt="Reviewing the proposed tentacles and to-dos" loading="lazy"><figcaption>Review: every tentacle and to-do is editable.</figcaption></figure>
+        <div class="note warn"><p><strong>Octogent must be running in that folder for Apply to work.</strong> If it isn't, Octoplan says so and puts the fix right there: press <strong>Run Octogent</strong>, wait for <em>Running :port</em>, then <strong>Retry apply</strong>.</p></div>
+        <figure><img src="16-handoff-needs-octogent.png" alt="Apply failed because Octogent isn't running, with a Run Octogent button" loading="lazy"></figure>
+        <p><em>Advanced:</em> "Export to one tentacle", under the wizard, writes chosen tasks into a single tentacle.</p>
+      </section>
+
+      <section id="build">
+        <div class="eyebrow">Build it · step 7</div>
+        <h2><span class="step">7</span> Build: Run Octogent</h2>
+        <p><strong>Run Octogent</strong> (in the Build step, the handoff, or the bottom bar) sets the folder up for Octogent if needed, opens a <strong>terminal window</strong> running <code>octogent</code> in your project, and waits for its real port. Then it shows <strong>Running :port</strong> and <strong>Open Octogent</strong>. If Octogent is already running, the button just opens it; it never starts a second copy. If no terminal can be opened, it shows the command with a Copy button.</p>
+        <figure><img src="17-run-octogent.png" alt="Octogent running, with an Open Octogent button and the trust reminder" loading="lazy"></figure>
+        <div class="note warn"><p><strong>First time in a folder:</strong> the first Claude terminal in Octogent asks whether to <em>trust this folder</em>. Accept it, or that terminal's first prompt is lost.</p></div>
+        <figure><img src="19-build.png" alt="The Build step with tentacle cards" loading="lazy"><figcaption>The Build step tracks every tentacle's to-dos.</figcaption></figure>
+      </section>
+
+      <section id="octogent">
+        <div class="eyebrow">Build it · inside Octogent</div>
+        <h2>Inside Octogent</h2>
+        <p>Octogent's views are numbered; press <kbd>1</kbd>–<kbd>8</kbd> to switch. <strong>[2] Deck</strong> shows one card per tentacle with its to-do list and progress, and buttons: <strong>Spawn</strong> starts an agent, <strong>Vault</strong> holds its files.</p>
+        <figure><img src="20-og-deck.png" alt="Octogent's Deck with three new tentacles" loading="lazy"><figcaption>The three tentacles the handoff created, straight from the plan.</figcaption></figure>
+        <p><strong>[1] Agents</strong> shows the octopus in the middle and the tentacles around it. Click a tentacle for its panel: <strong>Create Agent</strong> starts one agent, <strong>Spawn Swarm</strong> starts several for a long list.</p>
+        <div class="pair">
+          <figure><img src="21-og-agents.png" alt="The Agents map with the octopus and three tentacles" loading="lazy"><figcaption>The octopus and its tentacles.</figcaption></figure>
+          <figure><img src="22-og-tentacle.png" alt="A tentacle panel with Create Agent and its checklist" loading="lazy"><figcaption>A tentacle: create agents, see its checklist.</figcaption></figure>
+        </div>
+        <h3>Start the work</h3>
+        <ol>
+          <li>Open the <strong>octopus</strong> and paste the <strong>octopus prompt</strong> from Octoplan's Done step. It knows every tentacle, the order of the waves, and the rules: each agent stays in its own folders, and commits cite decision ids.</li>
+          <li>The octopus spawns an agent per tentacle, or press Spawn / Create Agent yourself.</li>
+          <li>Accept the folder-trust question the first time.</li>
+          <li>Watch the to-dos tick off on the Deck, in Octoplan's Build step, and on the <strong>Tentacles n/m</strong> button in Octoplan's header.</li>
+        </ol>
+        <figure><img src="23-og-real-deck.png" alt="A finished Deck: six tentacles with every to-do done" loading="lazy"><figcaption>What done looks like: a real project (Octoplan itself), planned in Octoplan and built by Octogent's agents.</figcaption></figure>
+      </section>
+
+      <section id="loop">
+        <div class="eyebrow">Build it · afterwards</div>
+        <h2>Closing the loop</h2>
+        <p>Agents make decisions while they build. Octoplan catches them. <strong>Harvest</strong> reads new commits and to-do changes, automatically when you open the project or with <strong>Harvest now</strong>, and proposes decisions in <strong>Needs attention</strong>; rejected ones never come back. <strong>Drift badges</strong> show whether each decision is implemented, untouched or diverged. The board's <strong>History</strong> tab shows how the plan evolved.</p>
+      </section>
+
+      <section id="more">
+        <div class="eyebrow">Reference</div>
+        <h2>Everything else in Octoplan</h2>
+        <div class="tbl"><table>
+          <thead><tr><th>Feature</th><th>How</th><th>For</th></tr></thead>
+          <tbody>
+            <tr><td>Sessions &amp; modes</td><td>+ New session (sidebar)</td><td><strong>Deep interview</strong> (thorough), <strong>Quick align</strong> (a few fast rounds), <strong>Brainstorm</strong> (ideas board), <strong>Devil's advocate</strong> (Claude pokes holes)</td></tr>
+            <tr><td>Idea capture</td><td><kbd>I</kbd></td><td>Jot an idea without leaving the conversation</td></tr>
+            <tr><td>Idea search</td><td>Board → Ideas → Search</td><td>Find ideas across all your projects</td></tr>
+            <tr><td>Brainstorm board</td><td>In a Brainstorm session</td><td>Star, park, kill, merge or adopt ideas; Converge turns starred ones into decisions</td></tr>
+            <tr><td>Branch</td><td><kbd>B</kbd></td><td>Fork the conversation to explore "what if" without losing the main line</td></tr>
+            <tr><td>Tentacles overview</td><td><kbd>G</kbd> or Tentacles n/m</td><td>Tentacle cards with progress, branches and PRs; the git graph</td></tr>
+            <tr><td>Expand all</td><td><kbd>E</kbd></td><td>Unfold every summary, tool row and answered round</td></tr>
+            <tr><td>Conventions</td><td>Board → Conventions</td><td>Personal rules for every project (<code>~/.octoplan/CONVENTIONS.md</code>)</td></tr>
+            <tr><td>Terminal</td><td>Terminal, next to a session</td><td>Open that Claude session in a real terminal</td></tr>
+            <tr><td>Restarts</td><td>automatic</td><td>A question you hadn't answered comes back after a restart</td></tr>
+          </tbody>
+        </table></div>
+        <p>Every hotkey also has a button in the toolbar at the top right.</p>
+      </section>
+
+      <section id="files">
+        <div class="eyebrow">Reference</div>
+        <h2>Where things are saved</h2>
+        <p>Everything is plain markdown in your project: read it, edit it, commit it.</p>
+        <div class="tbl"><table>
+          <thead><tr><th>File</th><th>What</th></tr></thead>
+          <tbody>
+            <tr><td><code>docs/plan/GOAL.md</code></td><td>Title, why, goals, non-goals, definition of done</td></tr>
+            <tr><td><code>docs/plan/DECISIONS.md</code></td><td>Numbered decisions (D1, D2…) and where each came from</td></tr>
+            <tr><td><code>GAPS.md</code> · <code>RISKS.md</code> · <code>PARKED.md</code></td><td>Open questions, risks (incl. tentative answers and assumptions), parked answers</td></tr>
+            <tr><td><code>COVERAGE.md</code></td><td>The twelve planning topics</td></tr>
+            <tr><td><code>IDEAS.md</code> · <code>branches.md</code></td><td>Ideas and conversation branches</td></tr>
+            <tr><td><code>INGEST.md</code> · <code>sources/</code></td><td>The import review, and your pasted text</td></tr>
+            <tr><td><code>sessions/</code></td><td>A log of every session's questions and answers</td></tr>
+            <tr><td><code>stages/STAGE-n.md</code></td><td>Build prompts</td></tr>
+            <tr><td><code>HANDOFF.md</code> · <code>OCTOPUS.md</code></td><td>The handoff plan and the octopus prompt</td></tr>
+            <tr><td><code>HARVEST.md</code></td><td>Decisions found in commits, waiting for review</td></tr>
+            <tr><td><code>.octogent/tentacles/&lt;id&gt;/</code></td><td>Octogent: each tentacle's CONTEXT.md and todo.md</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <section id="keys">
+        <div class="eyebrow">Reference</div>
+        <h2>Keyboard</h2>
+        <div class="tbl"><table>
+          <thead><tr><th>Where</th><th>Keys</th></tr></thead>
+          <tbody>
+            <tr><td>Octoplan</td><td><kbd>F</kbd> focus · <kbd>I</kbd> idea · <kbd>B</kbd> branch · <kbd>G</kbd> tentacles · <kbd>E</kbd> expand all · <kbd>Esc</kbd> close</td></tr>
+            <tr><td>Question card</td><td><kbd>1</kbd>–<kbd>9</kbd> pick · <kbd>Space</kbd> toggle · <kbd>O</kbd> other · <kbd>T</kbd> tentative · <kbd>P</kbd> park · <kbd>Tab</kbd> next · <kbd>Enter</kbd> confirm</td></tr>
+            <tr><td>Octogent</td><td><kbd>1</kbd> Agents · <kbd>2</kbd> Deck · <kbd>3</kbd> Activity · <kbd>4</kbd> Code intel · <kbd>5</kbd> Monitor · <kbd>6</kbd> Conversations · <kbd>7</kbd> Prompts · <kbd>8</kbd> Settings</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <section id="help">
+        <div class="eyebrow">Reference</div>
+        <h2>Troubleshooting</h2>
+        <div class="tbl"><table>
+          <thead><tr><th>You see</th><th>Do this</th></tr></thead>
+          <tbody>
+            <tr><td>"The octogent CLI isn't on PATH"</td><td>In the octogent repo: <code>pnpm install &amp;&amp; pnpm build &amp;&amp; npm install -g .</code>, then Run Octogent again</td></tr>
+            <tr><td>Apply says "Start Octogent in this repo first"</td><td>Press Run Octogent, wait for Running, then Retry apply</td></tr>
+            <tr><td>"…process is alive, but :port isn't answering"</td><td>Check the Octogent terminal window: it may still be starting, or show an error</td></tr>
+            <tr><td>An agent's first prompt did nothing</td><td>It was waiting on the trust question. Accept it and send the prompt again</td></tr>
+            <tr><td>The import takes a while</td><td>Big folders take a couple of minutes. Close the review and come back; it's saved</td></tr>
+            <tr><td>"Resolve or park … first"</td><td>A Sources-disagree item is still open: choose Resolved or Parked, or untick it</td></tr>
+            <tr><td>A file shows as "Not read"</td><td>It's a Word, PowerPoint or Excel file or an image. Paste its text into a new import</td></tr>
+            <tr><td>I can't find my import</td><td>Home → Recent projects → the one marked "import waiting for review"</td></tr>
+            <tr><td>Octoplan says Offline</td><td>Run <code>pnpm --filter @octogent/octoplan dev</code> again; sessions come back</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+    </main>
+  </div>
+
+  <footer>Octoplan v3 · screenshots are real footage from a demo project ("tally") and from the Octoplan build itself. The same guide lives in the repo at <code>docs/octoplan/HOW-TO.md</code>.</footer>
+</div>

@@ -492,7 +492,7 @@ const DoneStep = ({
           {result.tentacles.map((t) => (
             <li key={t.tentacleId} className={`op-hw-result op-hw-result--${t.ok ? "ok" : "fail"}`}>
               <code>{t.tentacleId}</code>
-              <span className="op-badge">{t.created ? "created" : "reused"}</span>
+              <span className="op-badge">{!t.ok ? "not written" : t.created ? "created" : "reused"}</span>
               <span>
                 {t.added} added, {t.skipped} skipped
               </span>

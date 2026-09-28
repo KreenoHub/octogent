@@ -133,6 +133,24 @@ for (const shot of shots) {
           `(() => { const el = document.querySelector(${JSON.stringify(step.type.selector)}); if (!el) return; const set = Object.getOwnPropertyDescriptor(el.__proto__, "value").set; set.call(el, ${JSON.stringify(step.type.text)}); el.dispatchEvent(new Event("input", { bubbles: true })); })()`,
         );
       }
+      if (step.scrollIntoView) {
+        await evaluate(
+          `document.querySelector(${JSON.stringify(step.scrollIntoView)})?.scrollIntoView({ block: ${JSON.stringify(step.block ?? "center")} })`,
+        );
+      }
+      if (step.select) {
+        await evaluate(
+          `(() => { const el = document.querySelector(${JSON.stringify(step.select.selector)}); if (!el) return; const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set; set.call(el, ${JSON.stringify(step.select.value)}); el.dispatchEvent(new Event("change", { bubbles: true })); })()`,
+        );
+      }
+      if (step.eval) await evaluate(step.eval);
+      // A real mouse click at CSS px (canvas views have no buttons to query).
+      if (step.clickAt) {
+        const [x, y] = step.clickAt;
+        for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) {
+          await cdp("Input.dispatchMouseEvent", { type, x, y, button: "left", clickCount: 1 });
+        }
+      }
       if (step.scroll) {
         await evaluate(
           `document.querySelector(${JSON.stringify(step.scroll.selector)})?.scrollTo(0, ${step.scroll.top})`,
@@ -143,6 +161,14 @@ for (const shot of shots) {
     const { data } = await cdp("Page.captureScreenshot", { format: "png" });
     const file = join(outDir, `${shot.name}.png`);
     writeFileSync(file, Buffer.from(data, "base64"));
+    // Element boxes in CSS px (the screenshot's 2000x1250 space), so scenes can point at the
+    // real UI instead of guessed coordinates. `rects: { name: "css selector" }`.
+    if (shot.rects) {
+      const rects = await evaluate(
+        `(() => { const out = {}; for (const [name, sel] of Object.entries(${JSON.stringify(shot.rects)})) { const el = typeof sel === "string" && sel.startsWith("text=") ? [...document.querySelectorAll("button, a, h2, h3, span, p, label, li, summary, output, code")].find((e) => e.textContent.trim().toLowerCase().includes(sel.slice(5).toLowerCase())) : document.querySelector(sel); if (!el) continue; const r = el.getBoundingClientRect(); out[name] = [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)]; } return out; })()`,
+      );
+      writeFileSync(join(outDir, `${shot.name}.json`), `${JSON.stringify(rects, null, 2)}\n`);
+    }
     console.log(`captured ${shot.name} (${Math.round((data.length * 0.75) / 1024)} KB)`);
   } catch (error) {
     console.log(`FAILED ${shot.name}: ${error.message}`);

@@ -1,6 +1,12 @@
 import type { CanUseTool, Options } from "@anthropic-ai/claude-agent-sdk";
 import { describe, expect, it } from "vitest";
-import { HANDOFF_TOOL, HARVEST_TOOL, createHeadlessRunner } from "../../server/bridge/headless";
+import {
+  HANDOFF_TOOL,
+  HARVEST_TOOL,
+  INGEST_MAX_TURNS,
+  INGEST_TOOL,
+  createHeadlessRunner,
+} from "../../server/bridge/headless";
 import type { QueryFn } from "../../server/bridge/types";
 import { createFakeQuery, result, sdkServerTools } from "./fakes";
 
@@ -142,6 +148,44 @@ describe("headless runner (D31, D45)", () => {
     await expect(runner.proposeHandoff({ repoPath: "C:\\repo", prompt: "p" })).rejects.toThrow(
       "not logged in",
     );
+  });
+
+  it("ingest: only plan_ingest, extra folders readable, more turns, last call wins", async () => {
+    const fake = createFakeQuery(async function* ({ options, next }) {
+      await next();
+      expect(options.additionalDirectories).toEqual(["D:/notes"]);
+      expect(options.maxTurns).toBe(INGEST_MAX_TURNS);
+      expect(sdkServerTools(options).names).toEqual([INGEST_TOOL]);
+      expect(await decide(options, "Write")).toBe("deny");
+      const tools = sdkServerTools(options);
+      await tools.call(INGEST_TOOL, { title: "First", items: [] });
+      await tools.call(INGEST_TOOL, {
+        title: "Habit",
+        maturity: "notes",
+        items: [{ kind: "goal", title: "Streaks", evidence: "found", source: "README.md" }],
+      });
+      yield result();
+    });
+    const runner = createHeadlessRunner({ query: fake.query });
+    const report = await runner.ingest({
+      repoPath: "C:/repo",
+      prompt: "Import.",
+      additionalDirectories: ["D:/notes"],
+    });
+    expect(fake.calls[0]?.received).toEqual(["Import."]);
+    expect(report).toMatchObject({ title: "Habit", maturity: "notes", items: [{ title: "Streaks" }] });
+  });
+
+  it("ingest: no extra folders means no additionalDirectories, and no report is null", async () => {
+    const fake = createFakeQuery(async function* ({ options, next }) {
+      await next();
+      expect(options.additionalDirectories).toBeUndefined();
+      yield result();
+    });
+    const runner = createHeadlessRunner({ query: fake.query });
+    expect(
+      await runner.ingest({ repoPath: "C:/repo", prompt: "p", additionalDirectories: [] }),
+    ).toBeNull();
   });
 
   it("rejects when the run fails before reporting anything", async () => {

@@ -2,8 +2,15 @@
 // idea search and brainstorm actions, staged prompts, tentacle export, git graph, branch links.
 // Wiring only: the logic lives in the store, modes and integrations tentacles (D33).
 import type { Dirent } from "node:fs";
-import { readdir } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { existsSync } from "node:fs";
+import { readdir, stat } from "node:fs/promises";
+import { homedir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import {
+  type IngestDraft,
+  type IngestSource,
+  buildPlanDigest,
+} from "@octogent/octoplan-protocol";
 import type {
   HandoffPlan,
   HandoffTentacle,
@@ -13,7 +20,15 @@ import type {
   ServerEvent,
 } from "@octogent/octoplan-protocol";
 import type { Broadcast, HeadlessRunner } from "./bridge/types";
+import { applyIngestToPlan, ingestProblem } from "./ingest/applyIngest";
+import { buildInventory, renderInventory } from "./ingest/inventory";
 import type { Integrations } from "./integrations/types";
+import {
+  type PromptSource,
+  buildImportBrief,
+  buildIngestPrompt,
+  normalizeIngest,
+} from "./modes/ingest";
 import * as defaultV2 from "./modes/handoff";
 import type { ApplyIdeaAction, BuildStages } from "./modes/wave2Types";
 import type { ConventionsStore, IdeaRegistry, PlanStore } from "./store/types";
@@ -48,6 +63,14 @@ export type PlanOpsDeps = {
 
 export const DEFAULT_LAUNCH_POLL = { intervalMs: 1000, timeoutMs: 60_000 };
 
+export const NO_IMPORT_MESSAGE =
+  "Import needs the Claude bridge; this Octoplan server was started without it.";
+
+/** What `applyIngest` hands back so the server can start the gap-focused interview (D57). */
+export type AppliedImport = { repoPath: string; topic: string; brief: string };
+
+const cleanPath = (raw: string) => resolve(raw.trim().replace(/^"(.*)"$/, "$1"));
+
 export const NO_INTEGRATIONS_MESSAGE =
   "This Octoplan server was started without integrations, so git graphs and Octogent export are unavailable.";
 export const NO_GOAL_MESSAGE =
@@ -72,6 +95,8 @@ export const createPlanOps = (deps: PlanOpsDeps) => {
   const v2: PlanOpsV2Modes = { ...defaultV2, ...deps.v2Modes };
   /** One harvest per repo at a time (repo open + a manual click can overlap). */
   const harvesting = new Set<string>();
+  /** Repos with an import pass in flight (one at a time per repo). */
+  const importing = new Set<string>();
   /** Workspaces with a launch in flight; a second click only reports the current status. */
   const launching = new Set<string>();
   const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
@@ -238,6 +263,204 @@ export const createPlanOps = (deps: PlanOpsDeps) => {
     // ---------------- v2 ----------------
 
     /** Tentacle cards + drift badges + history (D21–D24, D42). Each part degrades on its own. */
+    // ---- v3: entry paths and import (D50–D57) ----
+
+    /** D51: the default parent for a new project: where the latest known repo lives. */
+    defaultProjectsDir: async (): Promise<string> => {
+      const repos = deps.ideaRegistry ? await deps.ideaRegistry.listRepos().catch(() => []) : [];
+      const latest = repos.at(-1);
+      if (latest && existsSync(dirname(latest))) return dirname(latest);
+      const projects = join(homedir(), "Projects");
+      return existsSync(projects) ? projects : homedir();
+    },
+
+    /** D51: create the folder; the server then starts the interview. Null on failure. */
+    createProject: async (input: {
+      parentDir: string;
+      name: string;
+      idea: string;
+    }): Promise<string | null> => {
+      if (!deps.integrations) {
+        fail(NO_INTEGRATIONS_MESSAGE);
+        return null;
+      }
+      const created = await deps.integrations.createProject(input);
+      if (!created.ok) {
+        fail(created.message);
+        return null;
+      }
+      if (created.note) notice(created.note);
+      await registerRepo(created.repoPath);
+      notice(`Created ${created.repoPath}`);
+      return created.repoPath;
+    },
+
+    /**
+     * D52/D53: save pasted text, list every source, run one headless read-only pass and save
+     * the result as an INGEST.md draft for the review (D56). `reply` gets `focus-repo` first,
+     * so the UI can show the running import.
+     */
+    startImport: async (
+      input: { mainPath: string; extraPaths: string[]; pastes: string[]; gitInit: boolean },
+      reply: (event: ServerEvent) => void,
+    ) => {
+      const repoPath = cleanPath(input.mainPath);
+      const mainStat = await stat(repoPath).catch(() => null);
+      if (!mainStat?.isDirectory()) return fail(`Main folder not found: ${repoPath}`);
+      const extras: Array<{ path: string; kind: "folder" | "file" }> = [];
+      for (const raw of input.extraPaths) {
+        const path = cleanPath(raw);
+        const extraStat = await stat(path).catch(() => null);
+        if (!extraStat) return fail(`Not found: ${path}`);
+        extras.push({ path, kind: extraStat.isDirectory() ? "folder" : "file" });
+      }
+      if (!deps.headless) return fail(NO_IMPORT_MESSAGE);
+      const key = repoPath.toLowerCase();
+      if (importing.has(key)) return notice("An import is already running for this folder.");
+      importing.add(key);
+      const job = (state: "running" | "done" | "failed", message: string) =>
+        broadcast({ type: "plan-job", repoPath, job: "ingest", state, message });
+      reply({ type: "focus-repo", repoPath });
+      await registerRepo(repoPath);
+      const store = deps.storeFor(repoPath);
+      try {
+        job("running", "Preparing the import…");
+        if (input.gitInit && deps.integrations) {
+          const note = await deps.integrations.ensureGitRepo(repoPath);
+          if (note) notice(note);
+        }
+        const previous = await store.readIngest();
+        const known = new Set((previous?.sources ?? []).map((s) => s.path.toLowerCase()));
+        let n = previous?.sources.length ?? 0;
+        const added: IngestSource[] = [];
+        const addSource = (path: string, kind: IngestSource["kind"], main: boolean) => {
+          if (known.has(path.toLowerCase())) return;
+          known.add(path.toLowerCase());
+          n += 1;
+          added.push({ id: `S${n}`, path, kind, main, note: "", skipped: [] });
+        };
+        addSource(repoPath, "folder", true);
+        for (const extra of extras) addSource(extra.path, extra.kind, false);
+        const pasted = new Map<string, string>();
+        for (const text of input.pastes) {
+          const rel = await store.writePastedSource(text);
+          pasted.set(rel, text);
+          addSource(rel, "paste", false);
+        }
+
+        const promptSources: PromptSource[] = [];
+        for (const source of added) {
+          if (source.kind === "paste") {
+            promptSources.push({ ...source, text: pasted.get(source.path) ?? "" });
+            continue;
+          }
+          const inventory = await buildInventory(source.path);
+          source.skipped = inventory.skipped;
+          promptSources.push({ ...source, listing: renderInventory(inventory) });
+        }
+        const sources = [...(previous?.sources ?? []), ...added];
+        const now = deps.now ? deps.now().toISOString() : new Date().toISOString();
+        const base: IngestDraft = previous
+          ? { ...previous, status: "running", sources }
+          : {
+              status: "running",
+              createdAt: now,
+              title: "",
+              why: "",
+              maturity: "raw-idea",
+              maturityReasons: "",
+              coverage: [],
+              sources,
+              items: [],
+            };
+        await store.writeIngest(base);
+
+        job("running", `Claude is reading ${added.length} source${added.length === 1 ? "" : "s"}…`);
+        const snapshot = await store.snapshot();
+        const conventions = deps.conventions ? await deps.conventions.list().catch(() => []) : [];
+        const prompt = buildIngestPrompt({
+          sources: promptSources,
+          digest: buildPlanDigest(snapshot, conventions),
+          previousTitles: (previous?.items ?? []).map((item) => item.title),
+        });
+        const additionalDirectories = [
+          ...new Set(
+            extras.map((extra) => (extra.kind === "folder" ? extra.path : dirname(extra.path))),
+          ),
+        ];
+        const report = await deps.headless.ingest({ repoPath, prompt, additionalDirectories });
+        if (!report) {
+          await store.writeIngest({ ...base, status: previous?.status ?? "draft" });
+          return job("failed", "Claude finished without reporting anything. Try the import again.");
+        }
+        const draft = normalizeIngest({ report, sources, snapshot, previous, now });
+        await store.writeIngest(draft);
+        const fresh = draft.items.length - (previous?.items.length ?? 0);
+        job("done", `Understood ${fresh} item${fresh === 1 ? "" : "s"}. Review them before anything is written.`);
+      } catch (error) {
+        const current = await store.readIngest().catch(() => null);
+        if (current?.status === "running") {
+          await store.writeIngest({ ...current, status: "draft" }).catch(() => undefined);
+        }
+        job("failed", `The import failed: ${errorText(error)}`);
+      } finally {
+        importing.delete(key);
+      }
+    },
+
+    /** D56: review edits. Status and createdAt stay the server's. */
+    saveIngest: async (repoPath: string, draft: IngestDraft) => {
+      try {
+        const store = deps.storeFor(resolve(repoPath));
+        const current = await store.readIngest();
+        if (!current) return fail("There's no import to save.");
+        if (current.status !== "draft") return fail("This import can't be edited any more.");
+        await store.writeIngest({ ...draft, status: current.status, createdAt: current.createdAt });
+      } catch (error) {
+        fail(`Could not save the import review: ${errorText(error)}`);
+      }
+    },
+
+    /** D56/D57: write the kept items, then hand back what the first interview should focus on. */
+    applyIngest: async (repoPath: string, edited?: IngestDraft): Promise<AppliedImport | null> => {
+      const path = resolve(repoPath);
+      const job = (state: "running" | "done" | "failed", message: string) =>
+        broadcast({ type: "plan-job", repoPath: path, job: "ingest-apply", state, message });
+      try {
+        const store = deps.storeFor(path);
+        const current = await store.readIngest();
+        if (!current) {
+          fail("There's no import to apply.");
+          return null;
+        }
+        const draft =
+          edited && current.status === "draft"
+            ? { ...edited, status: current.status, createdAt: current.createdAt }
+            : current;
+        const problem = ingestProblem(draft);
+        if (problem) {
+          job("failed", problem);
+          return null;
+        }
+        job("running", "Writing the plan…");
+        const now = deps.now ? deps.now().toISOString() : new Date().toISOString();
+        const summary = await applyIngestToPlan(store, draft, now);
+        const snapshot = await store.snapshot();
+        job(
+          "done",
+          `Wrote ${summary.decisions} decisions, ${summary.goals} goals, ${summary.gaps} gaps and ${summary.risks} risks.`,
+        );
+        return {
+          repoPath: path,
+          topic: draft.title || "Continue the imported plan",
+          brief: buildImportBrief({ ...draft, status: "applied" }, snapshot),
+        };
+      } catch (error) {
+        job("failed", `Could not apply the import: ${errorText(error)}`);
+        return null;
+      }
+    },
+
     // ---- v3: Run Octogent (D58–D61) ----
     requestOctogentStatus: async (repoPath: string, reply: (event: ServerEvent) => void) => {
       if (!deps.integrations) return fail(NO_INTEGRATIONS_MESSAGE);

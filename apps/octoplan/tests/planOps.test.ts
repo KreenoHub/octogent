@@ -30,6 +30,10 @@ const v2Unused: Omit<Integrations, "exportToTentacle" | "buildGraph"> = {
   launchOctogent: async () => {
     throw new Error("unused");
   },
+  createProject: async () => {
+    throw new Error("unused");
+  },
+  ensureGitRepo: async () => null,
 };
 
 const cleanups: Array<() => void> = [];
@@ -96,6 +100,7 @@ describe("plan ops", () => {
     const other = setup();
     const otherIdea = await other.store.addIdea(idea("Offline sync"));
     const registry: IdeaRegistry = {
+      listRepos: async () => [],
       registerRepo: async () => {},
       searchIdeas: async () => [{ repoPath: other.dir, idea: otherIdea }],
     };

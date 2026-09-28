@@ -10,6 +10,8 @@ import { ExportDialog } from "./ExportDialog";
 import { FocusMode } from "./FocusMode";
 import { GraphOverlay } from "./GraphOverlay";
 import { HandoffDialog } from "./HandoffDialog";
+import { IngestDialog } from "./IngestDialog";
+import { HomeScreen } from "./home/HomeScreen";
 import { JobsLine, TentaclesButton } from "./HeaderStatus";
 import { IdeaCaptureDialog } from "./IdeaCaptureDialog";
 import { NewSessionDialog } from "./NewSessionDialog";
@@ -29,7 +31,17 @@ export const HOTKEYS = [
 ] as const;
 
 export const CockpitLayout = () => {
-  const { connection, activeRepo, sendClientEvent } = useOctoplan();
+  const { connection, activeRepo, sendClientEvent, home, setHome, planByRepo } = useOctoplan();
+  // D56: the review opens by itself while an import runs or waits; "Later" hides it until the
+  // next import (keyed by its createdAt and item count) or the header button.
+  const ingest = activeRepo ? (planByRepo[activeRepo]?.ingest ?? null) : null;
+  const ingestKey = ingest ? `${activeRepo}|${ingest.createdAt}|${ingest.items.length}` : null;
+  const [ingestHidden, setIngestHidden] = useState<string | null>(null);
+  const ingestOpen =
+    !home &&
+    ingest !== null &&
+    (ingest.status === "running" || ingest.status === "draft") &&
+    ingestHidden !== ingestKey;
   const [overlay, setOverlay] = useState<Overlay>(() =>
     initialOverlay(typeof window === "undefined" ? "" : window.location.search),
   );
@@ -63,7 +75,20 @@ export const CockpitLayout = () => {
     <div className="op-shell" data-terminal={terminalSessionId ? "open" : undefined}>
       <header className="op-header">
         <span className="op-logo">OCTOPLAN</span>
+        <button
+          type="button"
+          className="op-button op-header-home"
+          aria-pressed={home}
+          onClick={() => setHome(!home)}
+        >
+          {home ? "Back to planning" : "Home"}
+        </button>
         <div className="op-header-right">
+          {!home && ingest && ingest.status === "draft" && !ingestOpen ? (
+            <button type="button" className="op-button" onClick={() => setIngestHidden(null)}>
+              Review import
+            </button>
+          ) : null}
           {activeRepo ? <JobsLine repoPath={activeRepo} /> : null}
           {activeRepo ? (
             <TentaclesButton
@@ -89,15 +114,24 @@ export const CockpitLayout = () => {
           </span>
         ))}
       </nav>
-      <main className="op-panes">
-        <SessionSidebar
-          onNewSession={() => setOverlay("new-session")}
-          onOpenTerminal={setTerminalSessionId}
-        />
-        <ExpandAllContext.Provider value={expandAll}>
-          <ConversationPane onFocus={() => setOverlay("focus")} />
-        </ExpandAllContext.Provider>
-        <PlanBoard onExport={() => setOverlay("export")} onHandoff={() => setOverlay("handoff")} />
+      <main className={home ? "op-panes op-panes--home" : "op-panes"}>
+        {home ? (
+          <HomeScreen />
+        ) : (
+          <>
+            <SessionSidebar
+              onNewSession={() => setOverlay("new-session")}
+              onOpenTerminal={setTerminalSessionId}
+            />
+            <ExpandAllContext.Provider value={expandAll}>
+              <ConversationPane onFocus={() => setOverlay("focus")} />
+            </ExpandAllContext.Provider>
+            <PlanBoard
+              onExport={() => setOverlay("export")}
+              onHandoff={() => setOverlay("handoff")}
+            />
+          </>
+        )}
       </main>
       {terminalSessionId ? (
         <section className="op-terminal-panel" aria-label="Terminal">
@@ -127,6 +161,9 @@ export const CockpitLayout = () => {
       ) : null}
       {overlay === "handoff" && activeRepo ? (
         <HandoffDialog repoPath={activeRepo} onClose={close} />
+      ) : null}
+      {ingestOpen && activeRepo ? (
+        <IngestDialog repoPath={activeRepo} onClose={() => setIngestHidden(ingestKey)} />
       ) : null}
       <Toasts />
     </div>

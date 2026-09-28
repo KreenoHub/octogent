@@ -32,6 +32,7 @@ import {
   parkedCodec,
   parseGoalDoc,
   parseHandoffDoc,
+  parseIngestDoc,
   parseRecordDoc,
   parseSessionLog,
   riskCodec,
@@ -83,6 +84,7 @@ type Parsed = {
   // HANDOFF.md and OCTOPUS.md together make `snapshot().handoff`, so both texts are kept.
   handoff: string | null;
   octopus: string | null;
+  ingest: string | null;
 };
 
 /** One parsed docs/plan/sessions/*.md file. */
@@ -108,6 +110,7 @@ export const INDEXED_FILES: FileSpec[] = [
   { key: "harvest", path: PLAN_FILES.harvest.path },
   { key: "handoff", path: PLAN_FILES.handoff.path },
   { key: "octopus", path: PLAN_FILES.octopus.path },
+  { key: "ingest", path: PLAN_FILES.ingest.path },
 ];
 
 const SESSION_FILE_RE = new RegExp(`^${SESSIONS_DIR}/[^/]+\\.md$`);
@@ -220,6 +223,7 @@ const emptyParsed = (): Parsed => ({
   harvest: [],
   handoff: null,
   octopus: null,
+  ingest: null,
 });
 
 // Passed to refresh() to rescan docs/plan/sessions.
@@ -345,6 +349,9 @@ export class PlanIndex {
       case "octopus":
         this.parsed.octopus = text;
         break;
+      case "ingest":
+        this.parsed.ingest = text;
+        break;
     }
   }
 
@@ -436,6 +443,7 @@ export class PlanIndex {
         p.handoff === null
           ? null
           : parseHandoffDoc(p.handoff, (p.octopus ?? "").replace(/\r\n/g, "\n")),
+      ingest: p.ingest === null ? null : parseIngestDoc(p.ingest),
     };
   }
 

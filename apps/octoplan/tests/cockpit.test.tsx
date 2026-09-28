@@ -10,6 +10,11 @@ describe("cockpit shell", () => {
     const { emit } = renderCockpit();
     emit({ type: "hello", protocolVersion: 1, serverVersion: "0.0.0" });
     expect(screen.getByText("OCTOPLAN")).toBeInTheDocument();
+    // D50: with no sessions yet, Octoplan opens on the home screen's two entry paths.
+    expect(screen.getByTestId("home-screen")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /New project from an idea/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Import something that exists/ })).toBeInTheDocument();
+    act(() => screen.getByRole("button", { name: "Back to planning" }).click());
     expect(
       screen.getByRole("complementary", { name: "Projects and sessions" }),
     ).toBeInTheDocument();

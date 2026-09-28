@@ -1,0 +1,174 @@
+/* Home screen (D50): two entry paths and recent projects, in Octogent's tokens. */
+
+.op-home {
+  grid-column: 1 / -1;
+  display: grid;
+  align-content: start;
+  gap: 1.5rem;
+  max-width: 56rem;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+  overflow-y: auto;
+  font-family: var(--font-main);
+  color: var(--text-primary);
+}
+
+.op-home-paths {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem;
+}
+
+.op-home-path {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1.25rem;
+  text-align: left;
+  font-family: var(--font-main);
+  color: var(--text-primary);
+  background: var(--control-bg-strong);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+}
+
+.op-home-path:hover,
+.op-home-path:focus-visible {
+  border-color: var(--accent-primary);
+  outline: none;
+}
+
+.op-home-path-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: var(--control-letter-spacing);
+  text-transform: uppercase;
+  color: var(--accent-primary);
+}
+
+.op-home-path-text {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.op-home-heading {
+  margin: 0;
+  font-size: 0.8rem;
+  letter-spacing: var(--control-letter-spacing);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.op-home-recent ul {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.op-home-project {
+  display: grid;
+  gap: 0.2rem;
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  font-family: var(--font-main);
+  color: var(--text-primary);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+}
+
+.op-home-project:hover,
+.op-home-project:focus-visible {
+  border-color: var(--accent-primary);
+  outline: none;
+}
+
+.op-home-project-name {
+  font-weight: 700;
+}
+
+.op-home-project-path,
+.op-home-project-meta {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.op-home-form {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.op-home-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.4rem 0.5rem;
+  font-family: var(--font-main);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  background: var(--terminal-bg);
+  border: 1px solid var(--border-subtle);
+  resize: vertical;
+}
+
+.op-home-textarea:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.op-home-group {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border-subtle);
+}
+
+.op-home-group legend {
+  padding: 0 0.3rem;
+  font-size: 0.72rem;
+  letter-spacing: var(--control-letter-spacing);
+  color: var(--text-secondary);
+}
+
+.op-home-group > .op-button {
+  justify-self: start;
+}
+
+.op-home-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.op-home-row--paste {
+  align-items: start;
+}
+
+.op-home-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  font-family: var(--font-main);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  background: var(--terminal-bg);
+  border: 1px solid var(--border-subtle);
+}
+
+.op-home-check {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.op-home-error {
+  margin: 0;
+  color: var(--term-red);
+}

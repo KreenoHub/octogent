@@ -11,6 +11,7 @@ import type {
   Gap,
   GoalDoc,
   HandoffPlan,
+  IngestDraft,
   HarvestCandidate,
   HistoryEvent,
   Idea,
@@ -121,6 +122,13 @@ export interface PlanStore {
   /** docs/plan/OCTOPUS.md (D47). */
   writeOctopusPrompt(markdown: string): Promise<void>;
 
+  // ---- v3 ----
+  /** docs/plan/INGEST.md (D56). Also on `snapshot().ingest`. */
+  readIngest(): Promise<IngestDraft | null>;
+  writeIngest(draft: IngestDraft): Promise<void>;
+  /** Saves pasted import text as docs/plan/sources/pasted-<n>.md; returns that plan-relative path. */
+  writePastedSource(text: string): Promise<string>;
+
   /** Fires after Octoplan's own writes and after external edits to docs/plan (debounced). */
   onChange(listener: PlanChangeListener): () => void;
   dispose(): Promise<void>;
@@ -176,4 +184,6 @@ export type PlanStoreFactory = (repoPath: string) => PlanStore;
 export interface IdeaRegistry {
   registerRepo(repoPath: string): Promise<void>;
   searchIdeas(query: string): Promise<IdeaSearchResult[]>;
+  /** v3: known repos, oldest registration first (the default parent for a new project, D51). */
+  listRepos(): Promise<string[]>;
 }

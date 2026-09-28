@@ -36,9 +36,9 @@ export type ExportResult = {
   message: string;
 };
 
-/** v2: a long-running plan job (harvest, handoff generate/apply) for one repo. */
+/** A long-running plan job (harvest, handoff, v3 project creation and import) for one repo. */
 export type PlanJob = {
-  job: "harvest" | "handoff-generate" | "handoff-apply";
+  job: Extract<ServerEvent, { type: "plan-job" }>["job"];
   state: "running" | "done" | "failed";
   message: string;
 };
@@ -77,6 +77,8 @@ export type PlanClientState = {
   handoffResultByRepo: Record<string, HandoffResult>;
   /** v3 (D61): the latest Octogent status per repo, from request-octogent-status or a launch. */
   octogentStatusByRepo: Record<string, OctogentStatus>;
+  /** v3 (D51): the server's default parent folder for a new project, from `hello`. */
+  defaultProjectsDir: string | null;
 };
 
 export const MAX_ERRORS = 20;
@@ -103,6 +105,7 @@ export const initialPlanClientState: PlanClientState = {
   jobsByRepo: {},
   handoffResultByRepo: {},
   octogentStatusByRepo: {},
+  defaultProjectsDir: null,
 };
 
 const upsertById = <T extends { id: string }>(items: T[], item: T): T[] => {
@@ -119,7 +122,15 @@ export const planClientReducer = (
 ): PlanClientState => {
   switch (event.type) {
     case "hello":
-      return { ...state, serverVersion: event.serverVersion };
+      return {
+        ...state,
+        serverVersion: event.serverVersion,
+        defaultProjectsDir: event.defaultProjectsDir ?? state.defaultProjectsDir,
+      };
+    // Navigation hints; the provider acts on them (useOctoplan.tsx), the store keeps nothing.
+    case "focus-repo":
+    case "focus-session":
+      return state;
     case "sessions":
       return { ...state, sessions: event.sessions };
     case "session-updated":

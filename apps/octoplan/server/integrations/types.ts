@@ -11,6 +11,7 @@ import type {
   OctogentStatus,
   TentacleSummary,
 } from "@octogent/octoplan-protocol";
+import type { CreateProjectInput, CreateProjectResult } from "../ingest/newProject";
 import type { RuntimeProbe } from "./octogentRuntime";
 import type { TerminalLauncher } from "./terminalLauncher";
 
@@ -106,6 +107,10 @@ export type Integrations = {
    * (poll octogentStatus), or the current status when it's already up or can't be launched.
    */
   launchOctogent(repoPath: string): Promise<OctogentStatus>;
+  /** D51: create the folder, README with the idea, docs/plan and a first commit. */
+  createProject(input: CreateProjectInput): Promise<CreateProjectResult>;
+  /** D52: `git init` + an empty first commit unless `dir` is already in a repo; a note or null. */
+  ensureGitRepo(dir: string): Promise<string | null>;
 };
 
 export type IntegrationsDeps = {

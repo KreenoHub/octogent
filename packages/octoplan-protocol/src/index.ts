@@ -8,3 +8,4 @@ export * from "./markdown/records";
 export * from "./markdown/codecs";
 export * from "./markdown/documents";
 export * from "./markdown/planFiles";
+export * from "./markdown/ingest";

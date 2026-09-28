@@ -5,6 +5,7 @@ import type { GitGraph } from "@octogent/octoplan-protocol";
 import { applyHandoff } from "./applyHandoff";
 import { computeDrift } from "./drift";
 import { readGit } from "./gitGraph";
+import { createProject, initGitRepo, isGitRepo } from "../ingest/newProject";
 import { createGithubReader } from "./github";
 import { readHarvestInputs } from "./harvest";
 import { exportToTentacle } from "./octogentExport";
@@ -89,5 +90,10 @@ export const createIntegrations: CreateIntegrations = (deps) => {
     // ---- v3 ----
     octogentStatus: (repoPath) => octogentStatus(octogent, repoPath),
     launchOctogent: (repoPath) => launchOctogent(octogent, repoPath),
+    createProject: (input) => createProject(exec, input),
+    ensureGitRepo: async (dir) =>
+      (await isGitRepo(exec, dir))
+        ? null
+        : initGitRepo(exec, dir, { message: "chore: start planning with Octoplan" }),
   };
 };

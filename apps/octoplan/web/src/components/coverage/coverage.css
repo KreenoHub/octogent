@@ -1,0 +1,87 @@
+/* CoverageMap: one row per dimension. Matches the .op-coverage look in styles/cockpit.css. */
+
+.op-covmap {
+  font-size: 0.8rem;
+}
+
+.op-covmap-count {
+  margin: 0 0 0.4rem;
+  color: var(--text-secondary);
+}
+
+.op-covmap-count-value {
+  color: var(--accent-primary);
+}
+
+.op-covmap-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.op-covmap-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.2rem 0 0.2rem 0.6rem;
+  margin-bottom: 0.2rem;
+  border-left: 3px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.op-covmap-row[data-status="partial"] {
+  border-left-color: var(--term-warning);
+}
+
+.op-covmap-row[data-status="covered"] {
+  border-left-color: var(--term-green);
+  color: var(--text-primary);
+}
+
+.op-covmap-row[title] {
+  cursor: help;
+}
+
+.op-covmap-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Confidence: hollow (low), half (medium), solid (high). */
+.op-covmap-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 1px solid var(--text-secondary);
+  background: transparent;
+}
+
+.op-covmap-dot[data-confidence="medium"] {
+  background: linear-gradient(to top, var(--text-secondary) 50%, transparent 50%);
+}
+
+.op-covmap-dot[data-confidence="high"] {
+  border-color: var(--accent-primary);
+  background: var(--accent-primary);
+}
+
+/* 3-state bar: unknown = 0 segments lit, partial = 2 (warning), covered = 3 (green). */
+.op-covmap-bar {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.op-covmap-seg {
+  width: 0.55rem;
+  height: 0.4rem;
+  background: var(--border-subtle);
+}
+
+.op-covmap-row[data-status="partial"] .op-covmap-seg:nth-child(-n + 2) {
+  background: var(--term-warning);
+}
+
+.op-covmap-row[data-status="covered"] .op-covmap-seg {
+  background: var(--term-green);
+}

@@ -1,0 +1,42 @@
+[
+  {
+    "headRefName": "feat/x",
+    "isDraft": false,
+    "number": 12,
+    "state": "OPEN",
+    "title": "Feat X",
+    "url": "https://github.com/o/r/pull/12"
+  },
+  {
+    "headRefName": "octogent/api-swarm-0",
+    "isDraft": true,
+    "number": 13,
+    "state": "OPEN",
+    "title": "API worker",
+    "url": "https://github.com/o/r/pull/13"
+  },
+  {
+    "headRefName": "fix/y",
+    "isDraft": false,
+    "number": 14,
+    "state": "OPEN",
+    "title": "Fix Y",
+    "url": "https://github.com/o/r/pull/14"
+  },
+  {
+    "headRefName": "fix/z",
+    "isDraft": false,
+    "number": 15,
+    "state": "OPEN",
+    "title": "Fix Z",
+    "url": "https://github.com/o/r/pull/15"
+  },
+  {
+    "headRefName": "old",
+    "isDraft": false,
+    "number": 9,
+    "state": "MERGED",
+    "title": "Old",
+    "url": "https://github.com/o/r/pull/9"
+  }
+]

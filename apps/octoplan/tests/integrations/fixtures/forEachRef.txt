@@ -1,0 +1,8 @@
+refs/heads/mainc9
+refs/heads/feat/xc8
+refs/heads/octogent/api-swarm-0c6
+refs/heads/octogent/api-todo-2c4
+refs/heads/octogent/my-todo-app-swarm-parentc7
+refs/remotes/origin/HEADc9
+refs/remotes/origin/mainc9
+refs/remotes/origin/octogent/api-swarm-0c6

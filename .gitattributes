@@ -1,0 +1,6 @@
+# Octoplan paths always check out with LF so Biome passes on Windows (core.autocrlf=true).
+# Scoped on purpose: upstream Octogent files keep their existing behavior.
+apps/octoplan/** text=auto eol=lf
+packages/octoplan-protocol/** text=auto eol=lf
+docs/octoplan/** text=auto eol=lf
+scripts/octoplan-tentacles.mjs text=auto eol=lf

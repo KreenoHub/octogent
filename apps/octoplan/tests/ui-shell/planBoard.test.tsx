@@ -64,9 +64,10 @@ describe("live plan board", () => {
     expect(count(board, "Decisions")).toContain("3");
     expect(count(board, "Risks")).toContain("1");
     expect(count(board, "Goals")).toContain("0");
-    const stale = within(board).getByText("stale");
+    const decisions = within(board).getByRole("list", { name: "Decisions records" });
+    const stale = within(decisions).getByText("stale");
     expect(stale).toHaveClass("op-badge--stale");
-    expect(within(board).getByText("D2")).toBeInTheDocument();
+    expect(within(decisions).getByText("D2")).toBeInTheDocument();
   });
 
   it("ignores plans for other repos and shows the coverage slot", () => {

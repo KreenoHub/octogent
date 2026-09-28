@@ -374,3 +374,80 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* D43: one-line option descriptions; full text on hover or focus. */
+.qc-option-desc--clamped {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  text-overflow: ellipsis;
+}
+
+.qc-option:hover .qc-option-desc--clamped,
+.qc-option:focus-within .qc-option-desc--clamped {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+}
+
+/* D25: answered rounds collapse to one chip line per question. */
+.qc-card-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.qc-button--small {
+  padding: 0.1rem 0.45rem;
+  font-size: 0.7rem;
+}
+
+.qc-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qc-answer-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.25rem 0.5rem;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.qc-answer-chip:hover {
+  border-color: var(--accent-primary);
+}
+
+.qc-answer-chip:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+.qc-answer-chip-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qc-revised {
+  font-size: 0.65rem;
+  letter-spacing: var(--control-letter-spacing);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}

@@ -1,4 +1,4 @@
-/* Center pane: Unanswered tray, the stream of cards, and the composer. */
+/* Center pane: the stream of cards and the composer (the answer dock lives in stream.css). */
 
 .op-conversation {
   display: flex;
@@ -14,70 +14,6 @@
   gap: 0.6rem;
   overflow: auto;
   padding-bottom: 0.75rem;
-}
-
-.op-tray {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  margin-bottom: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  background: var(--bg-surface-1);
-  border: 1px solid var(--term-warning);
-}
-
-.op-tray-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.4rem;
-}
-
-.op-tray-title {
-  font-family: "Silkscreen", cursive;
-  font-size: 0.8rem;
-  color: var(--term-warning);
-}
-
-.op-tray-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.25rem;
-}
-
-.op-tray-item {
-  display: flex;
-  gap: 0.6rem;
-  width: 100%;
-  padding: 0.25rem 0.4rem;
-  font-family: var(--font-main);
-  font-size: 0.78rem;
-  text-align: left;
-  color: var(--text-primary);
-  background: var(--bg-surface-2);
-  border: 1px solid transparent;
-  cursor: pointer;
-}
-
-.op-tray-item:hover {
-  border-color: var(--term-warning);
-}
-
-.op-tray-round {
-  color: var(--term-warning);
-}
-
-.op-tray-headers {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.op-tray-count {
-  color: var(--text-secondary);
 }
 
 .op-card {

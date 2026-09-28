@@ -17,17 +17,21 @@ Planned in Octoplan (docs/plan/GOAL.md, DECISIONS.md D1–D43). Ids in brackets 
 
 ### Wave 3 — focus (D41)
 
-- [ ] [D14, D2] **Docked answer panel** — the pending round renders in a fixed dock above the composer (showing the latest prose digest line, R3); the stream keeps a compact stub that expands to the answered card. Replaces the jump-only UnansweredTray. Done when a component test with a long stream shows the pending round in the dock and a headless screenshot shows it visible without scrolling.
-- [ ] [D15] **One-line prose digest** — each assistant turn's prose shows its first line (or its headings) and expands on click; stored text is untouched. Done when a component test renders a 40-line reply as one line and the full text after a click.
-- [ ] [D19] **Grouped tool rows** — a turn's tool calls render as one summary row ("Read 4 files, recorded 3 decisions") that expands; plan-tool effects flash on the board. Done when a component test turns 7 tool calls into one row with the right counts.
-- [ ] [R3] **Expand-all hotkey** — one key expands every collapsed digest, chip and tool row in the stream, and again collapses them. Done when a component test toggles all three kinds with the key.
+- [x] [D14, D2] **Docked answer panel** — the pending round renders in a fixed dock above the composer (showing the latest prose digest line, R3); the stream keeps a compact stub that expands to the answered card. Replaces the jump-only UnansweredTray. Done when a component test with a long stream shows the pending round in the dock and a headless screenshot shows it visible without scrolling.
+- [x] [D15] **One-line prose digest** — each assistant turn's prose shows its first line (or its headings) and expands on click; stored text is untouched. Done when a component test renders a 40-line reply as one line and the full text after a click.
+- [x] [D19] **Grouped tool rows** — a turn's tool calls render as one summary row ("Read 4 files, recorded 3 decisions") that expands; plan-tool effects flash on the board. Done when a component test turns 7 tool calls into one row with the right counts.
+- [x] [R3] **Expand-all hotkey** — one key expands every collapsed digest, chip and tool row in the stream, and again collapses them. Done when a component test toggles all three kinds with the key.
 
 ### Wave 4 — memory (D41)
 
-- [ ] [D17, D9] **Needs-attention list** — the board lists stale decisions, unanswered rounds, tentative risks and pending harvest candidates (source + accept/reject). Done when a component test shows each kind and accept sends the accept event.
+- [x] [D17, D9] **Needs-attention list** — the board lists stale decisions, unanswered rounds, tentative risks and pending harvest candidates (source + accept/reject). Done when a component test shows each kind and accept sends the accept event.
 
 ### Wave 5 — overview (D41)
 
-- [ ] [D42, D22] **Tentacles n/m header button** — the cockpit header shows aggregate todo progress, opens G on click, and pulses when the count changes. Done when a component test shows the counts from a fixture summary and a click opens the G overlay.
-- [ ] [D9, D13] **Board sections** — ideas, stages and conversation branches sections, plus a cross-session view of every session in the repo. Done when a component test with the store aggregate fixture renders all four.
-- [ ] [D24] **Drift badges + History tab** — each decision shows implemented / untouched / diverged; a History tab shows the timeline. Done when a component test renders all three badges and the timeline in date order.
+- [x] [D42, D22] **Tentacles n/m header button** — the cockpit header shows aggregate todo progress, opens G on click, and pulses when the count changes. Done when a component test shows the counts from a fixture summary and a click opens the G overlay.
+- [x] [D9, D13] **Board sections** — ideas, stages and conversation branches sections, plus a cross-session view of every session in the repo. Done when a component test with the store aggregate fixture renders all four.
+- [x] [D24] **Drift badges + History tab** — each decision shows implemented / untouched / diverged; a History tab shows the timeline. Done when a component test renders all three badges and the timeline in date order.
+
+### Wave 6 — handoff to Octogent (D44–D48)
+
+- [x] [D44] **Hand off to Octogent button** — the plan board shows "Hand off to Octogent" when GOAL.md exists and opens `HandoffSlot` in a modal; the header shows running plan jobs. Done when a component test opens the wizard from the board and closes it.

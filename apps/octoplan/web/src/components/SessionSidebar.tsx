@@ -42,7 +42,17 @@ export const SessionSidebar = ({
                       title={session.status}
                     />
                     <span className="op-session-title">{session.title || "Untitled"}</span>
-                    <span className="op-session-mode">{MODE_LABELS[session.mode]}</span>
+                    <span className="op-session-mode">
+                      {MODE_LABELS[session.mode]}
+                      {session.restored ? (
+                        <span
+                          className="op-session-restored"
+                          title="Rebuilt from its transcript after a server restart"
+                        >
+                          restored
+                        </span>
+                      ) : null}
+                    </span>
                   </button>
                   <button
                     type="button"

@@ -11,6 +11,7 @@ import {
   type QuestionRound,
   type ServerEvent,
   type Session,
+  buildPlanDigest,
   coverageDimensionIdSchema,
   encodeAnswerText,
   encodeAnswersForTool,
@@ -20,7 +21,7 @@ import {
 import { applyAnsweredQuestions } from "../modes";
 import { buildConvergeTurn as defaultBuildConvergeTurn } from "../modes/brainstorm";
 import type { ModeDefinition } from "../modes/types";
-import type { PlanStore } from "../store/types";
+import type { PlanStore, TranscriptRecord } from "../store/types";
 import { splitSections, summarizeToolUse } from "./blocks";
 import { type InputQueue, createInputQueue } from "./inputQueue";
 import { PLAN_SERVER_NAME, createPlanToolsServer } from "./planTools";
@@ -46,6 +47,10 @@ type LiveSession = {
   pendingRevision: { questionId: string; staleIds: string[] } | null;
   /** A branch that hasn't reported its own Claude session id yet forks from this one. */
   forkOf?: string;
+  /** D30: rounds restored as pending after a restart; no canUseTool call is waiting on them. */
+  orphaned: Set<string>;
+  /** D18: rounds answered so far (revisions excluded), for the recap cadence. */
+  answeredRounds: number;
 };
 
 export const isRevisionHeading = (heading: string, questionId: string) =>
@@ -106,12 +111,58 @@ export const NOTHING_STARRED_MESSAGE =
 export const BRANCH_NOT_READY_MESSAGE =
   "This session can't be branched yet: Claude hasn't reported its session id. Wait for its first reply.";
 
-export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => {
+export const ORPHAN_ANSWERS_INTRO =
+  "Answers to your last round (the server restarted, so they arrive as a message):";
+
+export const ORPHAN_NO_CLAUDE_MESSAGE =
+  "Your answers were recorded in docs/plan, but this session never reported a Claude session id before the restart, so they can't reach Claude. Start a new session to continue.";
+
+/** Session-scoped events a transcript keeps (D29); everything else is not replayed. */
+const transcriptSessionId = (event: ServerEvent): string | null => {
+  switch (event.type) {
+    case "session-updated":
+      return event.session.id;
+    case "block":
+    case "round-answered":
+      return event.sessionId;
+    case "question-round":
+      return event.round.sessionId;
+    default:
+      return null;
+  }
+};
+
+const blockNumber = (id: string) => Number.parseInt(/-b(\d+)$/.exec(id)?.[1] ?? "0", 10);
+
+export const createSessionManager = (deps: BridgeDeps, emit: Broadcast) => {
   const now = deps.now ?? (() => new Date());
+  const recapEvery = deps.recapEvery ?? 3;
   const buildConvergeTurn = deps.buildConvergeTurn ?? defaultBuildConvergeTurn;
   const newId = deps.newId ?? randomUUID;
   const sessions = new Map<string, LiveSession>();
   const stores = new Map<string, PlanStore>();
+  // Appends are chained per session so a transcript keeps the broadcast order.
+  const transcriptChains = new Map<string, Promise<void>>();
+
+  // Every broadcast also goes to the session's transcript (fire-and-forget: a slow or
+  // failing disk never blocks Claude).
+  const broadcast: Broadcast = (event) => {
+    emit(event);
+    const transcripts = deps.transcripts;
+    const sessionId = transcripts ? transcriptSessionId(event) : null;
+    if (!transcripts || !sessionId) return;
+    const previous = transcriptChains.get(sessionId) ?? Promise.resolve();
+    const next = previous
+      .then(() => transcripts.append(sessionId, event))
+      .catch((error) =>
+        emit({
+          type: "error",
+          message: `Could not save the session transcript: ${errorText(error)}`,
+          sessionId,
+        }),
+      );
+    transcriptChains.set(sessionId, next);
+  };
 
   const reportError = (message: string, sessionId?: string) =>
     broadcast({ type: "error", message, ...(sessionId ? { sessionId } : {}) });
@@ -383,6 +434,74 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
     pushTurn(live, text);
   };
 
+  /** D16/D32: the plan digest; "" when the repo has no plan or it can't be read. */
+  const planDigest = async (store: PlanStore) => {
+    try {
+      const conventions = deps.conventions ? await deps.conventions.list().catch(() => []) : [];
+      return buildPlanDigest(await store.snapshot(), conventions);
+    } catch {
+      return "";
+    }
+  };
+
+  /** The canUseTool answer map; Q ids travel with each answer so Claude can cite them. */
+  const encodeRound = (round: QuestionRound, answers: Answer[]) => {
+    const encoded = encodeAnswersForTool(round.questions, answers);
+    for (const question of round.questions) {
+      const text = encoded[question.question];
+      if (text !== undefined) encoded[question.question] = `[${question.id}] ${text}`;
+    }
+    return encoded;
+  };
+
+  /** D18: every `recapEvery` answered rounds, the digest rides on the round's last answer. */
+  const withRecap = async (
+    live: LiveSession,
+    round: QuestionRound,
+    encoded: Record<string, string>,
+  ) => {
+    live.answeredRounds += 1;
+    if (recapEvery <= 0 || live.answeredRounds % recapEvery !== 0) return encoded;
+    const digest = await planDigest(live.store);
+    const last = [...round.questions].reverse().find((q) => encoded[q.question] !== undefined);
+    if (digest && last) encoded[last.question] = `${encoded[last.question]}\n\n${digest}`;
+    return encoded;
+  };
+
+  const recordRoundAnswers = async (live: LiveSession, round: QuestionRound, answers: Answer[]) => {
+    const sessionId = live.session.id;
+    live.answers.set(round.id, answers);
+    broadcast({ type: "round-answered", sessionId, roundId: round.id, answers });
+    try {
+      await live.store.recordAnswers(sessionId, round, answers);
+      await syncCoverage(live, round, answers);
+    } catch (error) {
+      reportError(`Could not record answers: ${errorText(error)}`, sessionId);
+    }
+  };
+
+  /** D30: a round orphaned by a restart is answered as one user turn to the resumed Claude. */
+  const answerOrphanedRound = async (
+    live: LiveSession,
+    round: QuestionRound,
+    answers: Answer[],
+  ) => {
+    live.orphaned.delete(round.id);
+    await recordRoundAnswers(live, round, answers);
+    if (!live.session.claudeSessionId) {
+      setStatus(live, "idle");
+      reportError(ORPHAN_NO_CLAUDE_MESSAGE, live.session.id);
+      return;
+    }
+    const encoded = await withRecap(live, round, encodeRound(round, answers));
+    const lines = round.questions.flatMap((q) => {
+      const text = encoded[q.question];
+      return text === undefined ? [] : [text];
+    });
+    setStatus(live, "running");
+    pushTurn(live, [ORPHAN_ANSWERS_INTRO, ...lines].join("\n"));
+  };
+
   const newLive = (session: Session, mode: ModeDefinition, store: PlanStore): LiveSession => ({
     session,
     mode,
@@ -397,7 +516,48 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
     blockCount: 0,
     summaryWritten: false,
     pendingRevision: null,
+    orphaned: new Set(),
+    answeredRounds: 0,
   });
+
+  /** Rebuilds one session from its transcript without starting Claude (D29). */
+  const restoreLive = (record: TranscriptRecord): LiveSession => {
+    const session = record.session;
+    const live = newLive(
+      { ...session, restored: true },
+      deps.getMode(session.mode),
+      storeFor(session.repoPath),
+    );
+    for (const event of record.events) {
+      if (event.type === "block") {
+        live.blocks.push(event.block);
+      } else if (event.type === "question-round") {
+        const index = live.rounds.findIndex((r) => r.id === event.round.id);
+        if (index >= 0) live.rounds[index] = event.round;
+        else live.rounds.push(event.round);
+      } else if (event.type === "round-answered") {
+        live.answers.set(event.roundId, event.answers);
+      }
+    }
+    live.questionCount = live.rounds.reduce((sum, r) => sum + r.questions.length, 0);
+    live.blockCount = live.blocks.reduce((max, b) => Math.max(max, blockNumber(b.id)), 0);
+    live.answeredRounds = live.rounds.filter((r) => live.answers.has(r.id)).length;
+    live.summaryWritten = session.status === "ended";
+    // Nothing is running any more: an unanswered last round waits again (answered as a
+    // user turn, D30); anything else in flight comes back idle.
+    const last = live.rounds.at(-1);
+    let status = session.status;
+    if (status !== "ended" && status !== "error") {
+      if (last && !live.answers.has(last.id)) {
+        live.orphaned.add(last.id);
+        status = "waiting-for-answer";
+      } else {
+        status = "idle";
+      }
+    }
+    live.session = { ...live.session, status };
+    return live;
+  };
 
   const register = async (live: LiveSession) => {
     sessions.set(live.session.id, live);
@@ -438,7 +598,10 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
       );
       await register(live);
       await emitPlan(repoPath, store);
-      const kickoff = mode.buildKickoffPrompt(topic);
+      // D16/D34: Claude starts from what docs/plan already settled.
+      const digest = await planDigest(store);
+      const prompt = mode.buildKickoffPrompt(topic);
+      const kickoff = digest ? `${digest}\n\n${prompt}` : prompt;
       addBlock(live, { kind: "user", id: blockId(live), text: kickoff, at: now().toISOString() });
       runQuery(live).push(kickoff);
       return live.session;
@@ -539,24 +702,16 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
       if (!live) return;
       const pending = live.pending.get(roundId);
       const round = live.rounds.find((r) => r.id === roundId);
+      if (round && !pending && live.orphaned.has(roundId)) {
+        await answerOrphanedRound(live, round, answers);
+        return;
+      }
       if (!pending || !round) {
         reportError(`Round ${roundId} is not waiting for an answer.`, sessionId);
         return;
       }
-      live.answers.set(roundId, answers);
-      broadcast({ type: "round-answered", sessionId, roundId, answers });
-      try {
-        await live.store.recordAnswers(sessionId, round, answers);
-        await syncCoverage(live, round, answers);
-      } catch (error) {
-        reportError(`Could not record answers: ${errorText(error)}`, sessionId);
-      }
-      // Q ids travel with each answer so Claude can cite them in decisions (questionIds).
-      const encoded = encodeAnswersForTool(round.questions, answers);
-      for (const question of round.questions) {
-        const text = encoded[question.question];
-        if (text !== undefined) encoded[question.question] = `[${question.id}] ${text}`;
-      }
+      await recordRoundAnswers(live, round, answers);
+      const encoded = await withRecap(live, round, encodeRound(round, answers));
       setStatus(live, "running");
       pending.settle({ behavior: "allow", updatedInput: { ...pending.input, answers: encoded } });
     },
@@ -606,6 +761,7 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
       for (const pending of [...live.pending.values()]) {
         pending.settle({ behavior: "deny", message: "The session was stopped.", interrupt: true });
       }
+      live.orphaned.clear();
       live.abort?.abort();
       live.input?.close();
       setStatus(live, "ended");
@@ -664,11 +820,33 @@ export const createSessionManager = (deps: BridgeDeps, broadcast: Broadcast) => 
       }
     },
 
+    /**
+     * D29/D30: rebuild sessions from `deps.transcripts` after a server restart. No Claude
+     * query starts here; the first message or answer resumes the saved Claude session.
+     * Returns how many sessions were restored.
+     */
+    restore: async (): Promise<number> => {
+      if (!deps.transcripts) return 0;
+      let count = 0;
+      for (const record of await deps.transcripts.load()) {
+        if (sessions.has(record.session.id)) continue;
+        try {
+          const live = restoreLive(record);
+          sessions.set(live.session.id, live);
+          count += 1;
+        } catch (error) {
+          reportError(`Could not restore session ${record.session.id}: ${errorText(error)}`);
+        }
+      }
+      return count;
+    },
+
     dispose: async () => {
       for (const live of sessions.values()) {
         live.abort?.abort();
         live.input?.close();
       }
+      await Promise.all(transcriptChains.values());
       await Promise.all([...stores.values()].map((store) => store.dispose()));
     },
   };

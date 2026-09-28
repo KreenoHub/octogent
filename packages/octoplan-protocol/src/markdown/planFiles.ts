@@ -27,9 +27,25 @@ export const PLAN_FILES = {
       "# Conversation branches\n\nExplorations forked from a session, and the git branch that implemented each.",
   },
   goal: { path: "GOAL.md", preamble: "" },
+  // v2
+  harvest: {
+    path: "HARVEST.md",
+    preamble:
+      "# Harvest\n\nDecisions noticed in commits and todo changes, waiting for review. Rejected ones never come back.",
+  },
+  handoff: {
+    path: "HANDOFF.md",
+    preamble: "# Handoff to Octogent",
+  },
+  /** Plain markdown (the octopus coordinator prompt, D47); not a record file. */
+  octopus: { path: "OCTOPUS.md", preamble: "" },
 } as const;
 
 export type PlanFileKey = keyof typeof PLAN_FILES;
+
+/** ~/.octoplan/CONVENTIONS.md (D28): user-level, next to projects.json. */
+export const CONVENTIONS_PREAMBLE =
+  "# Conventions\n\nPersonal conventions that apply to every repo. Octoplan puts them in each digest.";
 
 export const SESSIONS_DIR = "sessions";
 export const STAGES_DIR = "stages";

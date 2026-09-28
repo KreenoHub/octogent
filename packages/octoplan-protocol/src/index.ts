@@ -1,5 +1,7 @@
 export * from "./domain";
 export * from "./events";
+export * from "./v2";
+export * from "./digest";
 export * from "./answerEncoding";
 export * from "./markdown/records";
 export * from "./markdown/codecs";

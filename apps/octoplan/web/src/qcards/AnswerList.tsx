@@ -1,5 +1,5 @@
 import type { Answer, Question } from "@octogent/octoplan-protocol";
-import { type KeyboardEvent, useId, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import { ModifierBadge } from "./ModifierBadge";
 import { WhyThisQuestion } from "./QuestionBlock";
 import { RoundEditor } from "./RoundEditor";
@@ -15,6 +15,10 @@ type AnswerListProps = {
   label: string;
   items: readonly AnsweredItem[];
   onRevise: (answer: Answer) => void;
+  // Question to select (and optionally open for revision) on mount, e.g. after expanding a chip.
+  initialSelectedId?: string | undefined;
+  initialRevising?: boolean | undefined;
+  autoFocus?: boolean;
 };
 
 const AnswerStep = ({ answer, superseded }: { answer: Answer; superseded: boolean }) => {
@@ -36,11 +40,27 @@ const AnswerStep = ({ answer, superseded }: { answer: Answer; superseded: boolea
 
 // Keyboard-selectable list of answered questions. R reopens the selected one
 // as a single-question editor whose confirmation emits one revised Answer.
-export const AnswerList = ({ label, items, onRevise }: AnswerListProps) => {
+export const AnswerList = ({
+  label,
+  items,
+  onRevise,
+  initialSelectedId,
+  initialRevising = false,
+  autoFocus = false,
+}: AnswerListProps) => {
   const baseId = useId();
   const listRef = useRef<HTMLDivElement>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [revisingId, setRevisingId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null);
+  const [revisingId, setRevisingId] = useState<string | null>(
+    initialRevising ? (initialSelectedId ?? null) : null,
+  );
+
+  useEffect(() => {
+    // The revise editor focuses itself; otherwise land on the list so arrows and R work.
+    if (autoFocus && !initialRevising) {
+      listRef.current?.focus();
+    }
+  }, [autoFocus, initialRevising]);
 
   const selectedIndex = Math.max(
     items.findIndex((item) => item.question.id === selectedId),

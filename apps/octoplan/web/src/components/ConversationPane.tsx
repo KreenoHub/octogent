@@ -1,16 +1,64 @@
 import type { MessageBlock } from "@octogent/octoplan-protocol";
 import { useState } from "react";
 import { cardActionMessage, followUpQuote } from "../app/cardActions";
+import { useExpandAll } from "../app/expandAll";
 import { selectPendingRounds } from "../app/planClientReducer";
+import { groupStream, latestProse } from "../app/streamView";
 import { useOctoplan } from "../app/useOctoplan";
 import { roundAnchorId, useRoundActions } from "../app/useRoundActions";
+import { AnswerDock, focusDock } from "./AnswerDock";
 import { Composer, type ComposerPrefill } from "./Composer";
 import { PinnedStrip, sectionAnchorId } from "./PinnedStrip";
 import { type SectionBlock, SectionCard, type SectionCardActions } from "./SectionCard";
-import { UnansweredTray } from "./UnansweredTray";
+import { ToolGroupRow, ToolRow } from "./ToolRows";
 import { QuestionRoundSlot } from "./slots";
 
 const EMPTY: MessageBlock[] = [];
+
+/** A round in the stream: a one-line stub while it waits in the dock, the answered card after. */
+const RoundView = ({ roundId, sessionId }: { roundId: string; sessionId: string }) => {
+  const { rounds } = useOctoplan();
+  const expandAll = useExpandAll();
+  const { answerRound, reviseAnswer } = useRoundActions(sessionId);
+  const entry = rounds[roundId];
+  if (!entry) {
+    return (
+      <div className="op-round" id={roundAnchorId(roundId)}>
+        <p className="op-empty">Waiting for question round…</p>
+      </div>
+    );
+  }
+  const { round } = entry;
+  if (entry.status === "pending") {
+    return (
+      <div className="op-round" id={roundAnchorId(roundId)}>
+        <button
+          type="button"
+          className="op-round-stub"
+          data-testid="round-stub"
+          onClick={focusDock}
+        >
+          <span className="op-round-stub-label">ROUND {round.index}</span>
+          <span className="op-round-stub-headers">
+            {round.questions.map((q) => q.header || q.question).join(" · ")}
+          </span>
+          <span className="op-round-stub-hint">answer in the dock ↓</span>
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="op-round" id={roundAnchorId(roundId)}>
+      <QuestionRoundSlot
+        round={round}
+        answered={entry.answers}
+        compact={!expandAll}
+        onAnswer={(answers) => answerRound(round.id, answers)}
+        onRevise={reviseAnswer}
+      />
+    </div>
+  );
+};
 
 const BlockView = ({
   block,
@@ -21,8 +69,6 @@ const BlockView = ({
   sessionId: string;
   sectionActions: (section: SectionBlock) => SectionCardActions;
 }) => {
-  const { rounds } = useOctoplan();
-  const { answerRound, reviseAnswer } = useRoundActions(sessionId);
   switch (block.kind) {
     case "user":
       return (
@@ -31,35 +77,15 @@ const BlockView = ({
         </div>
       );
     case "tool":
-      return (
-        <div className="op-tool-row" data-testid="tool-row" title={block.summary}>
-          <span className="op-tool-name">{block.name}</span>
-          <span className="op-tool-summary">{block.summary}</span>
-        </div>
-      );
+      return <ToolRow tool={block} />;
     case "section":
       return (
         <div id={sectionAnchorId(block.id)}>
           <SectionCard block={block} actions={sectionActions(block)} />
         </div>
       );
-    case "question-round": {
-      const entry = rounds[block.roundId];
-      return (
-        <div className="op-round" id={roundAnchorId(block.roundId)}>
-          {entry ? (
-            <QuestionRoundSlot
-              round={entry.round}
-              {...(entry.status === "answered" ? { answered: entry.answers } : {})}
-              onAnswer={(answers) => answerRound(entry.round.id, answers)}
-              onRevise={reviseAnswer}
-            />
-          ) : (
-            <p className="op-empty">Waiting for question round…</p>
-          )}
-        </div>
-      );
-    }
+    case "question-round":
+      return <RoundView roundId={block.roundId} sessionId={sessionId} />;
   }
 };
 
@@ -107,23 +133,34 @@ export const ConversationPane = ({ onFocus }: { onFocus: () => void }) => {
     <section className="op-pane op-pane--center op-conversation" aria-label="Conversation">
       <h2 className="op-pane-title">CONVERSATION</h2>
       <PinnedStrip sections={pinned} onUnpin={togglePin} />
-      <UnansweredTray pending={pending} onFocus={onFocus} />
-      <div className="op-stream">
+      <div className="op-stream" data-testid="stream">
         {!activeSessionId ? (
           <p className="op-empty">Start a session to begin. Questions appear here as cards.</p>
         ) : blocks.length === 0 ? (
           <p className="op-empty">Waiting for Claude…</p>
         ) : (
-          blocks.map((block) => (
-            <BlockView
-              key={block.id}
-              block={block}
-              sessionId={activeSessionId}
-              sectionActions={sectionActions}
-            />
-          ))
+          groupStream(blocks).map((item) =>
+            item.kind === "tools" ? (
+              <ToolGroupRow key={item.id} tools={item.tools} />
+            ) : (
+              <BlockView
+                key={item.block.id}
+                block={item.block}
+                sessionId={activeSessionId}
+                sectionActions={sectionActions}
+              />
+            ),
+          )
         )}
       </div>
+      {activeSessionId ? (
+        <AnswerDock
+          sessionId={activeSessionId}
+          pending={pending}
+          latest={latestProse(blocks)}
+          onFocus={onFocus}
+        />
+      ) : null}
       <Composer sessionId={activeSessionId} prefill={prefill} />
     </section>
   );

@@ -15,12 +15,12 @@ export const StagesList = ({ repoPath, requested }: { repoPath: string; requeste
   const { stagesByRepo } = useOctoplan();
   const stages = stagesByRepo[repoPath];
   const [copied, setCopied] = useState<number | null>(null);
-  if (!stages && !requested) return null;
-
   return (
     <section className="op-stages" aria-label="Stages">
       <h2 className="op-pane-title">STAGES</h2>
-      {!stages ? (
+      {!stages && !requested ? (
+        <p className="op-empty">No stages yet. Press Stages to draft build prompts.</p>
+      ) : !stages ? (
         <p className="op-empty">Generating stages…</p>
       ) : stages.length === 0 ? (
         <p className="op-empty">No stages yet.</p>

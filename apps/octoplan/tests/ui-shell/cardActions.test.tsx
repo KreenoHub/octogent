@@ -69,14 +69,15 @@ describe("reply-card toolbar", () => {
     expect(screen.queryByRole("region", { name: "Pinned" })).not.toBeInTheDocument();
   });
 
-  it("collapse folds a short card to its first line and back", () => {
+  it("the toolbar's expand/collapse toggles the one-line digest (D15)", () => {
     const { card, toolbar } = withSections();
-    expect(within(card("Storage")).getByText(/line 3 of Storage/)).toBeInTheDocument();
-    fireEvent.click(within(toolbar("Storage")).getByRole("button", { name: "Collapse card" }));
     expect(card("Storage")).toHaveAttribute("data-collapsed", "true");
     expect(within(card("Storage")).queryByText(/line 3 of Storage/)).not.toBeInTheDocument();
     fireEvent.click(within(toolbar("Storage")).getByRole("button", { name: "Expand card" }));
+    expect(card("Storage")).toHaveAttribute("data-collapsed", "false");
     expect(within(card("Storage")).getByText(/line 3 of Storage/)).toBeInTheDocument();
+    fireEvent.click(within(toolbar("Storage")).getByRole("button", { name: "Collapse card" }));
+    expect(within(card("Storage")).queryByText(/line 3 of Storage/)).not.toBeInTheDocument();
   });
 
   it("ask follow-up prefills and focuses the composer with a quote, sending nothing", () => {

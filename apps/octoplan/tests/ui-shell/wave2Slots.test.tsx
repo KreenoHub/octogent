@@ -5,6 +5,7 @@ import { defaultTentacleId, parseTasks, tentacleIdError } from "../../web/src/ap
 import type {
   BrainstormSlotProps,
   BranchGraphSlotProps,
+  TentacleCardsSlotProps,
   TerminalSlotProps,
 } from "../../web/src/components/slots";
 import { graph, idea, plan, session, stage } from "./fixtures";
@@ -36,6 +37,11 @@ vi.mock("../../web/src/components/slots", async (importOriginal) => {
         <button type="button" onClick={onClose}>
           Close graph
         </button>
+      </div>
+    ),
+    TentacleCardsSlot: ({ tentacles, loading }: TentacleCardsSlotProps) => (
+      <div data-testid="tentacle-cards-slot">
+        {loading ? "Loading tentacles…" : `${tentacles.length} tentacles`}
       </div>
     ),
     TerminalSlot: ({ sessionId, onClose }: TerminalSlotProps) => (
@@ -76,7 +82,14 @@ describe("hotkey bar", () => {
       within(nav)
         .getAllByText(/^\[/)
         .map((el) => el.textContent),
-    ).toEqual(["[F] FOCUS", "[I] IDEA", "[B] BRANCH", "[G] GRAPH", "[ESC] CLOSE"]);
+    ).toEqual([
+      "[F] FOCUS",
+      "[I] IDEA",
+      "[B] BRANCH",
+      "[G] GRAPH",
+      "[E] EXPAND ALL",
+      "[ESC] CLOSE",
+    ]);
   });
 });
 

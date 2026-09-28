@@ -8,6 +8,8 @@ import { mapLimit } from "./util";
 export const GH_MIN_INTERVAL_MS = 60_000;
 export const GH_MAX_INTERVAL_MS = 10 * 60_000;
 export const PR_LIST_LIMIT = 30;
+export const PR_LIST_FIELDS =
+  "number,title,headRefName,headRepositoryOwner,isCrossRepository,state,isDraft,url";
 const CHECKS_CONCURRENCY = 6;
 
 export type GithubResult = { prs: PrStatus[]; ghAvailable: boolean; hint?: string };
@@ -68,6 +70,30 @@ export const ghHint = (result: ExecResult): string => {
   return `gh failed${first ? `: ${first}` : ""}. PR badges will retry later.`;
 };
 
+const ownerLogin = (owner: unknown): string | null => {
+  const login = (owner as { login?: unknown } | null)?.login;
+  return typeof login === "string" && login ? login : null;
+};
+
+/** `https://github.com/owner/repo.git` or `git@github.com:owner/repo` -> owner. */
+export const ownerFromRemote = (url: string): string | null =>
+  /github\.com[:/]([^/\s]+)\/[^/\s]+?(?:\.git)?\/?$/i.exec(url.trim())?.[1] ?? null;
+
+/** The base repo's owner: `gh repo view --json owner`, else the origin remote's URL. */
+export const readRepoOwner = async (exec: Exec, repoPath: string): Promise<string | null> => {
+  const view = await exec("gh", ["repo", "view", "--json", "owner"], repoPath);
+  if (view.code === 0) {
+    try {
+      const login = ownerLogin((JSON.parse(view.stdout) as { owner?: unknown }).owner);
+      if (login) return login;
+    } catch {
+      // fall through to the remote
+    }
+  }
+  const remote = await exec("git", ["remote", "get-url", "origin"], repoPath);
+  return remote.code === 0 ? ownerFromRemote(remote.stdout) : null;
+};
+
 const fetchChecks = async (exec: Exec, repoPath: string, number: number) => {
   // gh exits 1 on failing and 8 on pending checks but still prints the JSON.
   const out = await exec("gh", ["pr", "checks", String(number), "--json", "state"], repoPath);
@@ -78,20 +104,19 @@ const fetchChecks = async (exec: Exec, repoPath: string, number: number) => {
 export const fetchGithub = async (exec: Exec, repoPath: string): Promise<GithubResult> => {
   const list = await exec(
     "gh",
-    [
-      "pr",
-      "list",
-      "--json",
-      "number,title,headRefName,state,isDraft,url",
-      "--state",
-      "all",
-      "--limit",
-      String(PR_LIST_LIMIT),
-    ],
+    ["pr", "list", "--json", PR_LIST_FIELDS, "--state", "all", "--limit", String(PR_LIST_LIMIT)],
     repoPath,
   );
   const rows = list.code === 0 ? parseJsonArray(list.stdout) : null;
   if (!rows) return { prs: [], ghAvailable: false, hint: ghHint(list) };
+
+  // D37: a fork PR's head branch lives in someone else's repo. Its headRef can be `main`, which
+  // must not badge local main, so fork heads become `<owner>:<branch>` (gh's own notation).
+  const needsOwner = rows.some((raw) => {
+    const row = raw as Record<string, unknown>;
+    return typeof row.isCrossRepository !== "boolean" && ownerLogin(row.headRepositoryOwner);
+  });
+  const repoOwner = needsOwner ? await readRepoOwner(exec, repoPath) : null;
 
   const prs = await mapLimit(rows, CHECKS_CONCURRENCY, async (raw): Promise<PrStatus | null> => {
     const row = raw as Record<string, unknown>;
@@ -100,10 +125,18 @@ export const fetchGithub = async (exec: Exec, repoPath: string): Promise<GithubR
     const state = mapPrState(row.state);
     // Only open PRs get a checks call; closed/merged ones would cost 30 calls for stale data.
     const checks = state === "open" ? await fetchChecks(exec, repoPath, number) : "none";
+    const headOwner = ownerLogin(row.headRepositoryOwner);
+    const fork =
+      row.isCrossRepository === true ||
+      (typeof row.isCrossRepository !== "boolean" &&
+        headOwner !== null &&
+        repoOwner !== null &&
+        headOwner.toLowerCase() !== repoOwner.toLowerCase());
+    const headRefName = String(row.headRefName ?? "");
     return {
       number,
       title: String(row.title ?? ""),
-      headRef: String(row.headRefName ?? ""),
+      headRef: fork ? `${headOwner ?? "fork"}:${headRefName}` : headRefName,
       state,
       isDraft: row.isDraft === true,
       checks,

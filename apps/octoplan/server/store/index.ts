@@ -1,5 +1,6 @@
 // Rebuildable in-memory index over docs/plan. Everything here is derived from the markdown
 // files (D10); dropping the index and calling rebuild() yields the same data.
+import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import {
   COVERAGE_DIMENSION_LABELS,
@@ -9,6 +10,7 @@ import {
   type Decision,
   type Gap,
   type GoalDoc,
+  type HarvestCandidate,
   type Idea,
   type MdRecord,
   PLAN_DIR,
@@ -17,18 +19,26 @@ import {
   type PlanSnapshot,
   type RecordCodec,
   type Risk,
+  SESSIONS_DIR,
+  type SessionLog,
+  type SessionLogSummary,
   coverageCodec,
   decisionCodec,
   gapCodec,
   goalDocSchema,
+  harvestCodec,
   ideaCodec,
+  modeIdSchema,
   parkedCodec,
   parseGoalDoc,
+  parseHandoffDoc,
   parseRecordDoc,
+  parseSessionLog,
   riskCodec,
   serializeRecord,
 } from "@octogent/octoplan-protocol";
 import { hashText, readTextOrNull } from "./fsIo";
+import { sessionIdOf } from "./sessionLog";
 
 export type PlanWarning = { file: string; recordId: string; message: string };
 export type PlanWarningListener = (warning: PlanWarning) => void;
@@ -69,11 +79,24 @@ type Parsed = {
   ideas: Idea[];
   coverage: CoverageDimension[];
   goal: GoalDoc | null;
+  harvest: HarvestCandidate[];
+  // HANDOFF.md and OCTOPUS.md together make `snapshot().handoff`, so both texts are kept.
+  handoff: string | null;
+  octopus: string | null;
+};
+
+/** One parsed docs/plan/sessions/*.md file. */
+export type IndexedSessionLog = {
+  /** File name inside sessions/. */
+  file: string;
+  /** The Octoplan session id from the header, when present. */
+  sessionId?: string;
+  log: SessionLog;
 };
 
 type FileSpec = { [K in keyof Parsed]: { key: K; path: string } }[keyof Parsed];
 
-/** Plan files the snapshot is built from, relative to docs/plan. */
+/** Plan files the snapshot is built from, relative to docs/plan (plus every sessions/*.md). */
 export const INDEXED_FILES: FileSpec[] = [
   { key: "decisions", path: PLAN_FILES.decisions.path },
   { key: "gaps", path: PLAN_FILES.gaps.path },
@@ -82,7 +105,39 @@ export const INDEXED_FILES: FileSpec[] = [
   { key: "ideas", path: PLAN_FILES.ideas.path },
   { key: "coverage", path: PLAN_FILES.coverage.path },
   { key: "goal", path: PLAN_FILES.goal.path },
+  { key: "harvest", path: PLAN_FILES.harvest.path },
+  { key: "handoff", path: PLAN_FILES.handoff.path },
+  { key: "octopus", path: PLAN_FILES.octopus.path },
 ];
+
+const SESSION_FILE_RE = new RegExp(`^${SESSIONS_DIR}/[^/]+\\.md$`);
+
+/** True for docs/plan-relative paths the snapshot depends on. */
+export const isIndexedPath = (rel: string) =>
+  SESSION_FILE_RE.test(rel) || INDEXED_FILES.some((spec) => spec.path === rel);
+
+/** Board summary of one session log (D13): answers, parked, tentative and revision counts. */
+export const summarizeSessionLog = ({ file, log }: IndexedSessionLog): SessionLogSummary => {
+  const mode = modeIdSchema.safeParse(log.mode);
+  const count = (test: (entry: SessionLog["entries"][number]) => boolean) =>
+    log.entries.filter(test).length;
+  return {
+    file,
+    title: log.title,
+    mode: mode.success ? mode.data : "deep-interview",
+    startedAt: log.startedAt,
+    ...(log.claudeSessionId ? { claudeSessionId: log.claudeSessionId } : {}),
+    summary: log.summary,
+    answers: log.entries.length,
+    parked: count((e) => e.modifier === "parked"),
+    tentative: count((e) => e.modifier === "tentative"),
+    revisions: count((e) => Boolean(e.revises)),
+  };
+};
+
+/** Newest first: by start time, then by file name (which starts with the date). */
+const newestFirst = (a: IndexedSessionLog, b: IndexedSessionLog) =>
+  b.log.startedAt.localeCompare(a.log.startedAt) || b.file.localeCompare(a.file);
 
 export const emptyDimension = (id: CoverageDimensionId): CoverageDimension => ({
   id,
@@ -162,7 +217,14 @@ const emptyParsed = (): Parsed => ({
   ideas: [],
   coverage: [],
   goal: null,
+  harvest: [],
+  handoff: null,
+  octopus: null,
 });
+
+// Passed to refresh() to rescan docs/plan/sessions.
+const SESSIONS_SCAN = `${SESSIONS_DIR}/`;
+const allPaths = () => [...INDEXED_FILES.map((f) => f.path), SESSIONS_SCAN];
 
 export class PlanIndex {
   private readonly planDir: string;
@@ -170,6 +232,8 @@ export class PlanIndex {
   private readonly warned = new Set<string>();
   private hashes = new Map<string, string | null>();
   private parsed = emptyParsed();
+  private sessionHashes = new Map<string, string>();
+  private sessions = new Map<string, IndexedSessionLog>();
   private current: PlanIndexData = deriveIndex(this.toSnapshot());
   // Reads are serialized so a slow read of old content can't land after a newer one.
   private queue: Promise<unknown> = Promise.resolve();
@@ -189,21 +253,31 @@ export class PlanIndex {
     return this.current;
   }
 
+  /** Every parsed session log, newest first (as of the last sync/refresh). */
+  get sessionLogs(): IndexedSessionLog[] {
+    return [...this.sessions.values()].sort(newestFirst);
+  }
+
   /** Forgets everything and re-derives the index from disk. */
   rebuild(): Promise<PlanIndexData> {
     return this.serialized(() => {
       this.hashes = new Map();
       this.parsed = emptyParsed();
-      return this.load(INDEXED_FILES.map((f) => f.path));
+      this.sessionHashes = new Map();
+      this.sessions = new Map();
+      return this.load(allPaths());
     });
   }
 
   /** Re-reads every indexed file, re-parsing only those whose content changed. */
   sync(): Promise<PlanIndexData> {
-    return this.refresh(INDEXED_FILES.map((f) => f.path));
+    return this.refresh(allPaths());
   }
 
-  /** Re-reads just these files (paths relative to docs/plan; others are ignored). */
+  /**
+   * Re-reads just these files (paths relative to docs/plan; others are ignored). Any
+   * sessions/ path rescans the sessions folder.
+   */
   refresh(relPaths: readonly string[]): Promise<PlanIndexData> {
     return this.serialized(() => this.load(relPaths));
   }
@@ -219,7 +293,9 @@ export class PlanIndex {
     const specs = this.loaded
       ? INDEXED_FILES.filter((spec) => relPaths.includes(spec.path))
       : INDEXED_FILES;
+    const scanSessions = !this.loaded || relPaths.some((rel) => rel.startsWith(SESSIONS_SCAN));
     this.loaded = true;
+    if (scanSessions) await this.scanSessions();
     const texts = await Promise.all(
       specs.map((spec) =>
         readTextOrNull(join(this.planDir, spec.path)).catch((error: unknown) => {
@@ -260,7 +336,62 @@ export class PlanIndex {
       case "goal":
         this.parsed.goal = parseGoalText(text);
         break;
+      case "harvest":
+        this.parsed.harvest = this.readList(spec.path, text, harvestCodec);
+        break;
+      case "handoff":
+        this.parsed.handoff = text;
+        break;
+      case "octopus":
+        this.parsed.octopus = text;
+        break;
     }
+  }
+
+  /** Re-parses changed sessions/*.md files and forgets deleted ones. */
+  private async scanSessions() {
+    const dir = join(this.planDir, SESSIONS_DIR);
+    let names: string[];
+    try {
+      names = (await readdir(dir)).filter((name) => name.endsWith(".md"));
+    } catch {
+      names = [];
+    }
+    const present = new Set(names);
+    for (const name of [...this.sessions.keys()]) {
+      if (present.has(name)) continue;
+      this.sessions.delete(name);
+      this.sessionHashes.delete(name);
+    }
+    await Promise.all(
+      names.map(async (file) => {
+        const text = await readTextOrNull(join(dir, file)).catch(() => null);
+        // A log being claimed is empty for a moment; it is picked up on the next write.
+        if (text === null || text.trim() === "") {
+          this.sessions.delete(file);
+          this.sessionHashes.delete(file);
+          return;
+        }
+        const hash = hashText(text);
+        if (this.sessionHashes.get(file) === hash) return;
+        this.sessionHashes.set(file, hash);
+        try {
+          const sessionId = sessionIdOf(text);
+          this.sessions.set(file, {
+            file,
+            ...(sessionId ? { sessionId } : {}),
+            log: parseSessionLog(text),
+          });
+        } catch (error) {
+          this.sessions.delete(file);
+          this.onWarning({
+            file: `${SESSIONS_DIR}/${file}`,
+            recordId: "*",
+            message: String(error),
+          });
+        }
+      }),
+    );
   }
 
   private readList<T extends { id: string }>(
@@ -299,6 +430,12 @@ export class PlanIndex {
       ideas: p.ideas,
       coverage: toCoverageState(p.coverage),
       goal: p.goal,
+      harvest: p.harvest,
+      sessionLogs: this.sessionLogs.map(summarizeSessionLog),
+      handoff:
+        p.handoff === null
+          ? null
+          : parseHandoffDoc(p.handoff, (p.octopus ?? "").replace(/\r\n/g, "\n")),
     };
   }
 

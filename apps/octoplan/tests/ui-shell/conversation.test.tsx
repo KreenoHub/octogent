@@ -18,24 +18,24 @@ const withSession = () => {
 };
 
 describe("conversation stream", () => {
-  it("collapses long sections to heading + first line and toggles them", () => {
+  it("folds multi-line sections to a one-line digest and leaves one-liners open", () => {
     const { emit } = withSession();
     emit(
-      { type: "block", sessionId: "s1", block: sectionBlock("b1", "Short", 3) },
+      { type: "block", sessionId: "s1", block: sectionBlock("b1", "Short", 1) },
       { type: "block", sessionId: "s1", block: sectionBlock("b2", "Long", 20) },
     );
     const long = screen.getByRole("article", { name: "Long" });
-    expect(within(long).getByText("line 1 of Long")).toBeInTheDocument();
+    expect(within(long).getByTestId("prose-digest")).toHaveTextContent("Longline 1 of Long");
     expect(within(long).queryByText(/line 20 of Long/)).not.toBeInTheDocument();
 
-    fireEvent.click(within(long).getByRole("button", { name: "Expand" }));
+    fireEvent.click(within(long).getByTestId("prose-digest"));
     expect(within(long).getByText(/line 20 of Long/)).toBeInTheDocument();
     fireEvent.click(within(long).getByRole("button", { name: "Collapse" }));
     expect(within(long).queryByText(/line 20 of Long/)).not.toBeInTheDocument();
 
     const short = screen.getByRole("article", { name: "Short" });
-    expect(within(short).getByText(/line 3 of Short/)).toBeInTheDocument();
-    expect(within(short).queryByRole("button", { name: "Expand" })).not.toBeInTheDocument();
+    expect(within(short).getByText(/line 1 of Short/)).toBeInTheDocument();
+    expect(within(short).queryByTestId("prose-digest")).not.toBeInTheDocument();
   });
 
   it("renders tool blocks as one-line rows and user blocks as bubbles", () => {
@@ -57,13 +57,14 @@ describe("conversation stream", () => {
     expect(screen.getByText("Hello Claude").closest(".op-bubble")).not.toBeNull();
   });
 
-  it("keeps pending rounds in the Unanswered tray until round-answered arrives", () => {
+  it("keeps a pending round in the dock (stub in the stream) until round-answered arrives", () => {
     const { emit } = withSession();
     emit({ type: "question-round", round: round() }, roundBlock);
-    const tray = screen.getByRole("region", { name: "Unanswered" });
-    expect(within(tray).getAllByRole("listitem")).toHaveLength(1);
-    expect(within(tray).getByText(/Users/)).toBeInTheDocument();
-    expect(screen.getAllByTestId("question-round-slot")).toHaveLength(1);
+    const dock = screen.getByRole("region", { name: "Answer dock" });
+    expect(within(dock).getByTestId("question-round-slot")).toHaveAttribute("data-round-id", "r1");
+    const stream = screen.getByTestId("stream");
+    expect(within(stream).getByTestId("round-stub")).toHaveTextContent("Users · Scope");
+    expect(within(stream).queryByTestId("question-round-slot")).not.toBeInTheDocument();
 
     emit({
       type: "round-answered",
@@ -71,7 +72,10 @@ describe("conversation stream", () => {
       roundId: "r1",
       answers: [answer("Q1"), answer("Q2", { selected: ["Cloud"] })],
     });
-    expect(screen.queryByRole("region", { name: "Unanswered" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Answer dock" })).not.toBeInTheDocument();
+    expect(within(stream).queryByTestId("round-stub")).not.toBeInTheDocument();
+    const answered = within(stream).getByTestId("question-round-slot");
+    expect(answered).toHaveAttribute("data-compact", "true");
   });
 
   it("wires the question slot to answer-round", () => {

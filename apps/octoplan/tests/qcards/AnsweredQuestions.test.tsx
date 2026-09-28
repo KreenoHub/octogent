@@ -145,6 +145,7 @@ describe("QuestionRoundCard answered state", () => {
         ]}
         onAnswer={vi.fn()}
         onRevise={onRevise}
+        compact={false}
       />,
     );
     expect(screen.queryByRole("form", { name: /question round/i })).toBeNull();

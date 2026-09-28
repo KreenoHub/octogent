@@ -3,12 +3,16 @@
 // in parallel. Change it only through the octopus.
 import type {
   Answer,
+  Convention,
   ConversationBranch,
   CoverageDimension,
   CoverageState,
   Decision,
   Gap,
   GoalDoc,
+  HandoffPlan,
+  HarvestCandidate,
+  HistoryEvent,
   Idea,
   IdeaSearchResult,
   ModeId,
@@ -16,7 +20,10 @@ import type {
   PlanSnapshot,
   QuestionRound,
   Risk,
+  ServerEvent,
+  Session,
   SessionLogEntry,
+  SessionLogSummary,
   Stage,
 } from "@octogent/octoplan-protocol";
 
@@ -86,10 +93,77 @@ export interface PlanStore {
   readBranches(): Promise<ConversationBranch[]>;
   upsertBranch(input: BranchInput): Promise<ConversationBranch>;
 
+  // ---- v2 (waves 3–6) ----
+  /** docs/plan/HARVEST.md H-records (D27). Also on `snapshot().harvest`. */
+  readHarvest(): Promise<HarvestCandidate[]>;
+  /**
+   * Adds pending candidates. A candidate whose title matches (case-insensitive) an existing
+   * candidate of any status is skipped, so rejected ideas never come back. Returns the added ones.
+   */
+  addHarvest(inputs: readonly HarvestCandidateInput[]): Promise<HarvestCandidate[]>;
+  /** accept: writes a D-record from the candidate (source "harvest H<n>") and links it. */
+  resolveHarvest(
+    id: string,
+    action: "accept" | "reject",
+  ): Promise<{ candidate: HarvestCandidate; decision?: Decision }>;
+  /** Newest commit sha the last harvest covered (HARVEST.md preamble), or null. */
+  harvestMark(): Promise<string | null>;
+  setHarvestMark(sha: string): Promise<void>;
+
+  /** Every docs/plan/sessions/*.md summarized, newest first (D13). Also on the snapshot. */
+  readSessionLogs(): Promise<SessionLogSummary[]>;
+  /** Board History tab (D24): sessions, decisions (by date), revisions, stale marks, branches, harvest, handoff. */
+  readHistory(): Promise<HistoryEvent[]>;
+
+  /** docs/plan/HANDOFF.md (D46). Also on `snapshot().handoff`. */
+  readHandoff(): Promise<HandoffPlan | null>;
+  writeHandoff(plan: HandoffPlan): Promise<void>;
+  /** docs/plan/OCTOPUS.md (D47). */
+  writeOctopusPrompt(markdown: string): Promise<void>;
+
   /** Fires after Octoplan's own writes and after external edits to docs/plan (debounced). */
   onChange(listener: PlanChangeListener): () => void;
   dispose(): Promise<void>;
 }
+
+export type HarvestCandidateInput = Omit<
+  HarvestCandidate,
+  "id" | "status" | "decisionId" | "date"
+> & {
+  date?: string;
+};
+
+/**
+ * Per-session event log for restoring the cockpit after a server restart (D29). Lives in
+ * ~/.octoplan/transcripts/<sessionId>.jsonl: runtime state like projects.json, not plan
+ * content (the plan itself is always in docs/plan).
+ */
+export type TranscriptRecord = {
+  /** The last `session-updated` state. */
+  session: Session;
+  /** Every block, question-round and round-answered event, in order. */
+  events: ServerEvent[];
+};
+
+export interface TranscriptStore {
+  /** Appends one event; only session-updated, block, question-round and round-answered are kept. */
+  append(sessionId: string, event: ServerEvent): Promise<void>;
+  /** All transcripts, oldest session first. Corrupt lines are skipped, never thrown. */
+  load(): Promise<TranscriptRecord[]>;
+}
+
+/** ~/.octoplan/CONVENTIONS.md C-records (D28). */
+export interface ConventionsStore {
+  list(): Promise<Convention[]>;
+  add(input: { title: string; body: string }): Promise<Convention>;
+  remove(id: string): Promise<void>;
+}
+
+export type UserStoresOptions = {
+  /** Folder that holds `.octoplan/` (default: the user's home folder). */
+  homeDir?: string;
+  now?: () => Date;
+};
 
 export type BranchInput = Omit<ConversationBranch, "id"> & { id?: string };
 

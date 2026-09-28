@@ -1,4 +1,4 @@
-import { MODE_LABELS, groupSessionsByRepo, statusDot } from "../app/sessionView";
+import { MODE_LABELS, groupSessionsByRepo, sameRepo, statusDot } from "../app/sessionView";
 import { useOctoplan } from "../app/useOctoplan";
 
 export const SessionSidebar = ({
@@ -8,8 +8,16 @@ export const SessionSidebar = ({
   onNewSession: () => void;
   onOpenTerminal: (sessionId: string) => void;
 }) => {
-  const { sessions, activeSessionId, setActiveSession } = useOctoplan();
-  const groups = groupSessionsByRepo(sessions);
+  const {
+    sessions,
+    activeSessionId,
+    activeRepo,
+    planByRepo,
+    setActiveSession,
+    setActiveRepo,
+    setHome,
+  } = useOctoplan();
+  const groups = groupSessionsByRepo(sessions, Object.keys(planByRepo));
 
   return (
     <aside className="op-pane" aria-label="Projects and sessions">
@@ -29,12 +37,39 @@ export const SessionSidebar = ({
           >
             <h3 className="op-repo-name">{group.name}</h3>
             <ul className="op-session-list">
+              {group.sessions.length === 0 ? (
+                <li className="op-session-row">
+                  <button
+                    type="button"
+                    className="op-session"
+                    aria-current={sameRepo(group.repoPath, activeRepo) ? "true" : undefined}
+                    onClick={() => {
+                      setActiveRepo(group.repoPath);
+                      setHome(false);
+                    }}
+                  >
+                    <span className="op-session-title">No sessions yet</span>
+                    <span className="op-session-mode">
+                      {planByRepo[group.repoPath]?.ingest?.status === "draft"
+                        ? "Import waiting for review"
+                        : "Plan only"}
+                    </span>
+                  </button>
+                </li>
+              ) : null}
               {group.sessions.map((session) => (
                 <li key={session.id} className="op-session-row">
                   <button
                     type="button"
                     className="op-session"
-                    aria-current={session.id === activeSessionId ? "true" : undefined}
+                    // Only while its project is the one on screen: a repo opened without a
+                    // session (an import under review) must not leave another project's
+                    // session looking active.
+                    aria-current={
+                      session.id === activeSessionId && sameRepo(session.repoPath, activeRepo)
+                        ? "true"
+                        : undefined
+                    }
                     onClick={() => setActiveSession(session.id)}
                   >
                     <span

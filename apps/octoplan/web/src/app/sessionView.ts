@@ -30,19 +30,34 @@ export type RepoGroup = { repoPath: string; name: string; sessions: Session[] };
 export const repoName = (repoPath: string): string =>
   repoPath.split(/[\\/]/).filter(Boolean).at(-1) ?? repoPath;
 
-/** Sessions grouped by repo, repos in first-seen order, newest session first within a repo. */
-export const groupSessionsByRepo = (sessions: Session[]): RepoGroup[] => {
+/** Windows paths differ only in case or a trailing slash for the same folder. */
+export const sameRepo = (a: string | null | undefined, b: string | null | undefined): boolean =>
+  !!a && !!b && a.replace(/[\\/]+$/, "").toLowerCase() === b.replace(/[\\/]+$/, "").toLowerCase();
+
+/**
+ * Sessions grouped by repo, repos in first-seen order, newest session first within a repo;
+ * then repos that only have a plan (an import still waiting for review has no session yet,
+ * and must stay reachable from the sidebar too).
+ */
+export const groupSessionsByRepo = (
+  sessions: Session[],
+  planRepos: readonly string[] = [],
+): RepoGroup[] => {
   const groups = new Map<string, Session[]>();
   for (const session of sessions) {
     const list = groups.get(session.repoPath) ?? [];
     list.push(session);
     groups.set(session.repoPath, list);
   }
-  return [...groups].map(([repoPath, list]) => ({
+  const withSessions = [...groups].map(([repoPath, list]) => ({
     repoPath,
     name: repoName(repoPath),
     sessions: list.slice().sort((a, b) => b.startedAt.localeCompare(a.startedAt)),
   }));
+  const planOnly = planRepos
+    .filter((repoPath) => !withSessions.some((group) => sameRepo(group.repoPath, repoPath)))
+    .map((repoPath) => ({ repoPath, name: repoName(repoPath), sessions: [] }));
+  return [...withSessions, ...planOnly];
 };
 
 export const SECTION_COLLAPSE_LINES = 12;

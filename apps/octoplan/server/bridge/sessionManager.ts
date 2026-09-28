@@ -1,12 +1,14 @@
 import { randomUUID } from "node:crypto";
-import { statSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, statSync } from "node:fs";
+import { join, resolve } from "node:path";
 import type { Options, PermissionResult, SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import {
   type Answer,
   type Decision,
   type MessageBlock,
   type ModeId,
+  PLAN_DIR,
+  PLAN_FILES,
   type Question,
   type QuestionRound,
   type ServerEvent,
@@ -840,6 +842,34 @@ export const createSessionManager = (deps: BridgeDeps, emit: Broadcast) => {
           count += 1;
         } catch (error) {
           reportError(`Could not restore session ${record.session.id}: ${errorText(error)}`);
+        }
+      }
+      return count;
+    },
+
+    /**
+     * After a restart, open the plan of every known repo whose import is still waiting for
+     * review. Such a repo has no session, so nothing else opens its store, and the replay would
+     * leave it off Home and the sidebar. Returns how many were reopened.
+     */
+    reopenPendingImports: async (): Promise<number> => {
+      if (!deps.ideaRegistry) return 0;
+      const repos = await deps.ideaRegistry.listRepos().catch(() => []);
+      let count = 0;
+      for (const repoPath of repos) {
+        if (stores.has(repoPath)) continue;
+        if (!existsSync(join(repoPath, PLAN_DIR, PLAN_FILES.ingest.path))) continue;
+        try {
+          const store = deps.storeFor(repoPath);
+          if ((await store.readIngest())?.status !== "draft") {
+            await store.dispose();
+            continue;
+          }
+          store.onChange((plan) => broadcast({ type: "plan", repoPath, plan }));
+          stores.set(repoPath, store);
+          count += 1;
+        } catch (error) {
+          reportError(`Could not reopen the import in ${repoPath}: ${errorText(error)}`);
         }
       }
       return count;

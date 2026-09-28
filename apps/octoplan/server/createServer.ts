@@ -206,7 +206,11 @@ export const startOctoplanServer = (options: {
         const repoPath = await planOps?.createProject(event);
         if (!repoPath) return;
         send(socket, { type: "focus-repo", repoPath });
-        const session = await manager.start({ repoPath, mode: "deep-interview", topic: event.idea });
+        const session = await manager.start({
+          repoPath,
+          mode: "deep-interview",
+          topic: event.idea,
+        });
         if (session) send(socket, { type: "focus-session", sessionId: session.id });
         return;
       }
@@ -265,12 +269,24 @@ export const startOctoplanServer = (options: {
     });
   });
 
-  // D29: bring back sessions from before a restart before anyone connects.
+  // D29: bring back sessions from before a restart before anyone connects, then the imports
+  // still waiting for review (they have no session, so the replay would otherwise miss them).
   const restored = manager
-    ? manager.restore().catch((error) => {
-        console.warn(`[octoplan] could not restore sessions: ${String(error)}`);
-        return 0;
-      })
+    ? manager
+        .restore()
+        .catch((error) => {
+          console.warn(`[octoplan] could not restore sessions: ${String(error)}`);
+          return 0;
+        })
+        .then((count) =>
+          manager
+            .reopenPendingImports()
+            .catch((error) => {
+              console.warn(`[octoplan] could not reopen pending imports: ${String(error)}`);
+              return 0;
+            })
+            .then(() => count),
+        )
     : Promise.resolve(0);
 
   return restored.then(
